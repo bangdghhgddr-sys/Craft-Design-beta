@@ -8,9 +8,9 @@ input[type=text],input[type=number]{font:inherit;background:#0f1012;color:var(--
 .screen{height:100%;display:flex;flex-direction:column}#app{display:none}
 .bar{display:flex;gap:5px;padding:5px 6px;overflow-x:auto;background:var(--pn);align-items:center;flex:none}#top{border-bottom:1px solid var(--bd)}#opts{border-top:1px solid var(--bd);min-height:34px}#opts span,#opts label{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;color:var(--mu)}
 #work{flex:1;display:flex;min-height:0}
-#strip{width:90px;flex:none;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:var(--pn);border-right:1px solid var(--bd);padding:6px;box-sizing:border-box}
-#tg{display:grid;grid-template-columns:1fr;gap:6px}
-#tg button{padding:0;height:44px;width:100%;border-radius:12px;background:linear-gradient(160deg,#2c2d31,#121315);border:1px solid #35373d;box-shadow:inset 0 1px 0 #ffffff14,0 1px 2px #000a;display:flex;align-items:center;justify-content:center}
+#strip{width:58px;flex:none;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:var(--pn);border-right:1px solid var(--bd);padding:6px;box-sizing:border-box}
+#tg{display:grid;grid-template-columns:1fr;gap:6px;justify-items:center}
+#tg button{padding:0;height:44px;width:44px;aspect-ratio:1/1;border-radius:10px;background:linear-gradient(160deg,#2c2d31,#121315);border:1px solid #35373d;box-shadow:inset 0 1px 0 #ffffff14,0 1px 2px #000a;display:flex;align-items:center;justify-content:center}
 #tg button.on{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac),inset 0 1px 0 #ffffff22}
 svg.i{width:20px;height:20px;fill:none;stroke:#e8eaee;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 #sw{position:relative;height:66px;margin-top:8px}#fg,#bg{position:absolute;width:32px;height:32px;border-radius:5px;border:2px solid #e8eaee;box-sizing:border-box}#fg{top:2px;left:4px;z-index:2}#bg{top:22px;left:22px}#swp{position:absolute;right:0;top:20px;padding:3px 6px}
@@ -1525,6 +1525,231 @@ window.CDX_SET3_TIPS={"tips": [{"w": 360, "h": 57, "data": "iVBORw0KGgoAAAANSUhE
   };
 })();
 
+/* Brush import: add your own brushes from PNG files.
+   - Accepts PNG (transparent PNG uses its alpha; otherwise darker = stronger).
+   - ABR (Photoshop brush) files are not supported yet; export each brush as PNG.
+   - Imported brushes are saved in this browser and appear under "My brushes". */
+(() => {
+  'use strict';
+
+  const STORE_KEY = 'cd_user_brushes';
+  const MAX_W = 360;
+  const mine = new Map();    // key -> { name, img, kind }
+
+  // ---- storage ----
+  function loadSaved() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch (e) { return []; }
+  }
+  function saveAll(list) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); return true; }
+    catch (e) { return false; }
+  }
+
+  // ---- register a brush ----
+  function register(item) {
+    const img = new Image();
+    img.src = item.data;
+    const kind = item.w / item.h >= 2.2 ? 'stroke' : 'stamp';
+    mine.set(item.key, { name: item.name, img, kind });
+    BN[item.key] = item.name;
+    BTAG[item.key] = 'U';
+    BS[item.key] = kind === 'stroke'
+      ? { size: 40, op: 100, flow: 100, sm: 30, hard: 100 }
+      : { size: 40, op: 100, flow: 80, sm: 10, hard: 100 };
+  }
+
+  const tintCache = new Map();
+  function tinted(key, color) {
+    const k = key + '|' + color;
+    if (tintCache.has(k)) return tintCache.get(k);
+    const m = mine.get(key);
+    if (!m || !m.img.complete || !m.img.naturalWidth) return null;
+    const c = document.createElement('canvas');
+    c.width = m.img.naturalWidth; c.height = m.img.naturalHeight;
+    const q = c.getContext('2d');
+    q.drawImage(m.img, 0, 0);
+    q.globalCompositeOperation = 'source-in';
+    q.fillStyle = color;
+    q.fillRect(0, 0, c.width, c.height);
+    if (tintCache.size > 150) tintCache.clear();
+    tintCache.set(k, c);
+    return c;
+  }
+
+  // ---- drawing (uses the same stroke direction as the other brushes) ----
+  const previousDab = dab;
+  dab = function (x, y, r, a) {
+    const key = bt;
+    if (!mine.has(key)) return previousDab(x, y, r, a);
+    const m = mine.get(key);
+    const img = tinted(key, fg);
+    if (!img) return previousDab(x, y, r, a);
+    const q = sbx;
+    q.save();
+    q.globalAlpha = a;
+    q.translate(x, y);
+    if (m.kind === 'stroke') {
+      q.rotate(window.cdxAngle || 0);
+      const len = Math.max(4, r * 3), thick = Math.max(1.5, len * img.height / img.width);
+      q.drawImage(img, -len / 2, -thick / 2, len, thick);
+    } else {
+      q.rotate(Math.random() * Math.PI * 2);
+      const h = Math.max(2, r * 2), w = h * img.width / img.height;
+      q.drawImage(img, -w / 2, -h / 2, w, h);
+    }
+    q.restore();
+  };
+
+  // ---- preview ----
+  const previews = new Map();
+  function previewOf(key) {
+    if (previews.has(key)) return previews.get(key);
+    const PW = 260, PH = 64;
+    const c = document.createElement('canvas');
+    c.width = PW; c.height = PH;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#2b2b2e';
+    ctx.fillRect(0, 0, PW, PH);
+    const saved = { bt, sbx, fg };
+    const r = 40 * 0.3;
+    bt = key; sbx = ctx; fg = '#ffffff';
+    const steps = 60;
+    try {
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const x = 20 + t * (PW - 40);
+        const y = PH / 2 + Math.sin(t * Math.PI * 2) * PH * 0.16;
+        const dx = (PW - 40) / steps, dy = Math.cos(t * Math.PI * 2) * Math.PI * 2 * PH * 0.16 / steps;
+        window.cdxAngle = Math.atan2(dy, dx);
+        dab(x, y, r, fa());
+      }
+    } finally { bt = saved.bt; sbx = saved.sbx; fg = saved.fg; }
+    const url = c.toDataURL('image/png');
+    previews.set(key, url);
+    return url;
+  }
+
+  // ---- convert an uploaded image into a brush tip ----
+  function toTip(image) {
+    const scale = Math.min(1, MAX_W / image.naturalWidth);
+    const w0 = Math.round(image.naturalWidth * scale), h0 = Math.round(image.naturalHeight * scale);
+    const src = document.createElement('canvas');
+    src.width = w0; src.height = h0;
+    const sq = src.getContext('2d');
+    sq.drawImage(image, 0, 0, w0, h0);
+    const d = sq.getImageData(0, 0, w0, h0).data;
+    const alpha = new Float32Array(w0 * h0);
+    let hasTransparency = false;
+    for (let i = 0; i < w0 * h0; i++) if (d[i * 4 + 3] < 250) { hasTransparency = true; break; }
+    for (let i = 0; i < w0 * h0; i++) {
+      const L = (d[i * 4] + d[i * 4 + 1] + d[i * 4 + 2]) / 3;
+      alpha[i] = hasTransparency ? d[i * 4 + 3] / 255 : (255 - L) / 255;
+    }
+    // trim empty edges
+    let x0 = w0, y0 = h0, x1 = -1, y1 = -1;
+    for (let y = 0; y < h0; y++) for (let x = 0; x < w0; x++) {
+      if (alpha[y * w0 + x] > 0.04) {
+        if (x < x0) x0 = x; if (x > x1) x1 = x;
+        if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+    }
+    if (x1 < 0) return null;
+    const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+    const out = document.createElement('canvas');
+    out.width = bw; out.height = bh;
+    const oq = out.getContext('2d');
+    const imgData = oq.createImageData(bw, bh);
+    for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+      const a = alpha[(y + y0) * w0 + (x + x0)];
+      const o = (y * bw + x) * 4;
+      imgData.data[o] = 0; imgData.data[o + 1] = 0; imgData.data[o + 2] = 0;
+      imgData.data[o + 3] = Math.round(a * 255);
+    }
+    oq.putImageData(imgData, 0, 0);
+    return { w: bw, h: bh, data: out.toDataURL('image/png') };
+  }
+
+  function addFromFile(file) {
+    const name = file.name.replace(/\.[^.]+$/, '').slice(0, 24) || 'My brush';
+    const reader = new FileReader();
+    reader.onload = () => {
+      const image = new Image();
+      image.onload = () => {
+        const tip = toTip(image);
+        if (!tip) return toast('This image is empty');
+        const item = { key: 'u' + Date.now().toString(36), name, w: tip.w, h: tip.h, data: tip.data };
+        const list = loadSaved();
+        list.push(item);
+        if (!saveAll(list)) return toast('Storage is full. Delete some brushes first');
+        register(item);
+        toast('Brush added: ' + name);
+        brushMenu();
+      };
+      image.onerror = () => toast('Could not read this image');
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeBrush(key) {
+    const list = loadSaved().filter(b => b.key !== key);
+    saveAll(list);
+    mine.delete(key);
+    delete BN[key]; delete BTAG[key]; delete BS[key];
+    previews.delete(key);
+    if (bt === key) bt = 'basic';
+    brushMenu();
+  }
+
+  // ---- UI: input, button and "My brushes" section ----
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.png,image/png,.abr';
+  input.style.display = 'none';
+  document.body.append(input);
+  input.addEventListener('change', () => {
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file) return;
+    if (/\.abr$/i.test(file.name)) {
+      return toast('ABR files are not supported yet. Export each brush as PNG');
+    }
+    addFromFile(file);
+  });
+
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const originalBrushMenu = brushMenu;
+  brushMenu = function () {
+    originalBrushMenu();
+    const keys = [...mine.keys()];
+    const cards = keys.map(k => {
+      const selected = k === bt ? ' class="on"' : '';
+      return `<div style="position:relative">` +
+        `<button type="button" data-a="bpick" data-k="${k}"${selected} title="${esc(mine.get(k).name)}" style="display:flex;flex-direction:column;align-items:stretch;gap:3px;padding:4px;height:auto;width:100%">` +
+        `<img src="${previewOf(k)}" alt="" style="width:100%;height:auto;display:block;border-radius:6px;background:#2b2b2e">` +
+        `<span style="font-size:12px;text-align:left">${k === bt ? '✓ ' : ''}${esc(mine.get(k).name)}</span></button>` +
+        `<button type="button" data-cd-del="${k}" title="Delete" style="position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:11px;padding:0;line-height:20px;font-size:14px">×</button></div>`;
+    }).join('');
+    const section =
+      `<div class="mu"><b>My brushes</b></div>` +
+      (keys.length ? `<div class="grid2">${cards}</div>` : '<div class="mu" style="font-size:12px;opacity:.7">No brushes yet.</div>') +
+      `<button type="button" id="cd-import" style="margin:8px 0;width:100%">+ Import brush (PNG)</button>`;
+    const closeBtn = sheet.querySelector('[data-a="close"]');
+    if (closeBtn) closeBtn.insertAdjacentHTML('beforebegin', section);
+    else sheet.insertAdjacentHTML('beforeend', section);
+  };
+
+  sheet.addEventListener('click', e => {
+    const imp = e.target.closest('#cd-import');
+    if (imp) { e.stopPropagation(); input.click(); return; }
+    const del = e.target.closest('[data-cd-del]');
+    if (del) { e.stopPropagation(); removeBrush(del.dataset.cdDel); }
+  }, true);
+
+  // ---- load saved brushes at start ----
+  loadSaved().forEach(register);
+})();
+
 /* Smart snapping for object layers (images, text, shapes):
    - Snaps the left / center / right and top / middle / bottom of the object to the
      canvas edges, the center, and the golden-ratio lines (38.2% and 61.8%).
@@ -1548,7 +1773,7 @@ window.CDX_SET3_TIPS={"tips": [{"w": 360, "h": 57, "data": "iVBORw0KGgoAAAANSUhE
   snapButton.title = 'Golden ratio snap (center, edges, golden lines)';
   snapButton.setAttribute('aria-pressed', 'true');
   snapButton.className = 'on';
-  snapButton.innerHTML = '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round">'+ '<rect x="2" y="5.8" width="20" height="12.4"/>'+ '<path d="M14.4 5.8V18.2M14.4 13.4H22M19.2 13.4V18.2"/>'+ '<path d="M2 18.2A12.4 12.4 0 0 1 14.4 5.8"/>'+ '<path d="M14.4 5.8A7.6 7.6 0 0 1 22 13.4"/>'+ '<path d="M22 13.4A4.8 4.8 0 0 1 17.2 18.2"/></svg><span>Golden</span>';
+  snapButton.innerHTML = '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round">'+ '<rect x="2" y="5.8" width="20" height="12.4"/>'+ '<path d="M14.4 5.8V18.2M14.4 13.4H22M19.2 13.4V18.2"/>'+ '<path d="M2 18.2A12.4 12.4 0 0 1 14.4 5.8"/>'+ '<path d="M14.4 5.8A7.6 7.6 0 0 1 22 13.4"/>'+ '<path d="M22 13.4A4.8 4.8 0 0 1 17.2 18.2"/></svg>';
   snapButton.addEventListener('click', e => {
     e.preventDefault(); e.stopPropagation();
     snapOn = !snapOn;
@@ -1859,5 +2084,133 @@ window.CDX_SET3_TIPS={"tips": [{"w": 360, "h": 57, "data": "iVBORw0KGgoAAAANSUhE
     colUI();
     sheetName = 'col';
   };
+})();
+
+/* Save shortcut and layer editing.
+   - Save button in the top bar (and Ctrl+S / Cmd+S): saves the project and stays in the editor.
+   - Edit button on each layer: opens that layer in its own workspace, like a side document.
+     Save puts the changes back into the project's layer; Cancel discards them. */
+(() => {
+  'use strict';
+
+  let sub = null;   // { parent: { layers, cur, undo, redo, index }, name }
+
+  // ---- Save button and Ctrl+S ----
+  const top = document.getElementById('top');
+  const saveButton = document.createElement('button');
+  saveButton.type = 'button';
+  saveButton.id = 'cdSave';
+  saveButton.title = 'Save (Ctrl+S)';
+  saveButton.textContent = 'Save';
+  top.querySelector('[data-a="home"]').after(saveButton);
+
+  async function saveNow() {
+    if (sub) return toast('Finish editing the layer first');
+    if (!P) return toast('Open a project first');
+    await saveProj();
+    toast('Saved');
+  }
+  saveButton.addEventListener('click', e => { e.preventDefault(); saveNow(); });
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      saveNow();
+    }
+  });
+
+  // Never save a layer's temporary workspace as a project
+  const originalSaveProj = saveProj;
+  saveProj = async function () {
+    if (sub) return;
+    return originalSaveProj.apply(this, arguments);
+  };
+
+  // ---- Edit bar ----
+  const bar = document.createElement('div');
+  bar.id = 'cdEditBar';
+  bar.style.cssText = 'position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:9000;display:none;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:#1d2026;border:1px solid #ff3ddb;color:#e8eaee;font:13px system-ui,sans-serif;box-shadow:0 8px 24px #000a';
+  bar.innerHTML = '<span id="cdEditName" style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>' +
+                  '<button type="button" id="cdEditCancel">Cancel</button>' +
+                  '<button type="button" id="cdEditSave" style="background:#ff3ddb;color:#fff">Save</button>';
+  document.body.append(bar);
+  document.getElementById('cdEditCancel').addEventListener('click', () => finish(false));
+  document.getElementById('cdEditSave').addEventListener('click', () => finish(true));
+
+  // ---- Start editing a layer ----
+  function editLayer(index) {
+    if (sub) return toast('Finish the current layer edit first');
+    const target = layers[index];
+    if (!target) return;
+    if (target.lk) return toast('Layer is locked');
+
+    const content = document.createElement('canvas');
+    content.width = W; content.height = H;
+    content.getContext('2d').drawImage(target.c, 0, 0);
+
+    sub = { parent: { layers, cur, undo, redo, index }, name: target.name };
+    const work = mk(target.name);
+    work.x.drawImage(content, 0, 0);
+    layers = [work];
+    cur = work;
+    undo = []; redo = [];
+
+    document.getElementById('cdEditName').textContent = 'Editing: ' + target.name;
+    bar.style.display = 'flex';
+    render();
+    drawOv();
+  }
+
+  // ---- Finish: Save writes the flattened layer back; Cancel restores ----
+  function finish(save) {
+    if (!sub) return;
+    const p = sub.parent;
+    let flat = null;
+    if (save) {
+      flat = document.createElement('canvas');
+      flat.width = W; flat.height = H;
+      const fq = flat.getContext('2d');
+      for (const l of layers) {
+        if (!l.vis) continue;
+        fq.globalAlpha = l.op;
+        fq.globalCompositeOperation = l.bm || 'source-over';
+        fq.drawImage(l.c, 0, 0);
+      }
+      fq.globalAlpha = 1;
+      fq.globalCompositeOperation = 'source-over';
+    }
+    sub = null;
+    layers = p.layers; cur = p.cur; undo = p.undo; redo = p.redo;
+    bar.style.display = 'none';
+
+    if (save) {
+      const target = layers[p.index];
+      push();                                   // undo snapshot of the project layer
+      target.ob = null;                         // the layer becomes pixels
+      target.x.clearRect(0, 0, W, H);
+      target.x.drawImage(flat, 0, 0);
+      dirty = true;
+    }
+    render();
+    drawOv();
+  }
+
+  // Pressing Home while editing cancels the layer edit first
+  const originalGoHome = goHome;
+  goHome = async function (save = true) {
+    if (sub) finish(false);
+    return originalGoHome(save);
+  };
+
+  // ---- Edit button on each layer row ----
+  const originalLayersUI = layersUI;
+  layersUI = function () {
+    originalLayersUI();
+    document.querySelectorAll('#sheet .row').forEach(row => {
+      if (row.querySelector('[data-a="ledit"]')) return;
+      row.insertAdjacentHTML('beforeend', `<button type="button" data-a="ledit" data-i="${row.dataset.i}">Edit</button>`);
+    });
+  };
+
+  A.ledit = b => editLayer(+b.dataset.i);
 })();
 </script></body></html>
