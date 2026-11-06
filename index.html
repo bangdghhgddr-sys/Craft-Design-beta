@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Craft Design</title>
+<!DOCTYPE html><html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Craft Design</title><meta name="description" content="Craft Design: a mobile-friendly design app for drawing, layers, brushes, text, shapes and PSD files."><meta name="theme-color" content="#07112c"><link rel="icon" href="favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png"><link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png"><link rel="manifest" href="manifest.json"><meta property="og:type" content="website"><meta property="og:title" content="Craft Design"><meta property="og:description" content="Craft Design: a mobile-friendly design app for drawing, layers, brushes, text, shapes and PSD files."><meta property="og:image" content="https://bangdghhgddr-sys.github.io/Craft-Design-beta/social-preview.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Craft Design"><meta name="twitter:image" content="https://bangdghhgddr-sys.github.io/Craft-Design-beta/social-preview.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@400;700&family=Poppins:wght@400;700&family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&family=Lato:wght@400;700&family=Raleway:wght@400;700&family=Bebas+Neue&family=Oswald:wght@400;700&family=Anton&family=Archivo+Black&family=Playfair+Display:wght@400;700&family=Merriweather:wght@400;700&family=Lora:wght@400;700&family=Cormorant+Garamond:wght@400;700&family=Pacifico&family=Lobster&family=Dancing+Script:wght@400;700&family=Great+Vibes&family=Roboto+Mono:wght@400;700&family=Cairo:wght@400;700&display=swap">
 <style>
 :root{--bg:#0d0d0f;--pn:#17181b;--p2:#202226;--tx:#e8eaee;--mu:#8b919c;--ac:#4c8dff;--bd:#2c2f35;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -1790,6 +1790,61 @@ window.CDX_GRUNGE_TIPS={"tips": [{"w": 320, "h": 278, "data": "iVBORw0KGgoAAAANS
     if (rasterSticks.x) guideLines.push({ v: true, t: rasterSticks.x.target });
     if (rasterSticks.y) guideLines.push({ v: false, t: rasterSticks.y.target });
     drawOv();
+  };
+})();
+
+/* Adobe trademark notice.
+   Shown once each time the app opens, right after the Terms are accepted
+   (or straight away if they were accepted earlier). It fades out on its own. */
+(() => {
+  'use strict';
+
+  const NOTICE_TEXT = "Craft Design is an independent design application and is not affiliated with, sponsored by, or endorsed by Adobe Inc. The 'PSD' format is used solely for the purpose of file compatibility and interoperability. All Adobe product names and trademarks are the property of Adobe Inc.";
+  const SHOW_MS = 6000;
+  let shown = false;
+
+  function showNotice() {
+    if (shown) return;
+    shown = true;
+
+    const box = document.createElement('div');
+    box.setAttribute('role', 'note');
+    box.style.cssText = [
+      'position:fixed', 'left:50%', 'bottom:max(18px,env(safe-area-inset-bottom))',
+      'transform:translateX(-50%)', 'z-index:10000', 'width:min(92vw,520px)',
+      'box-sizing:border-box', 'padding:12px 14px', 'border-radius:12px',
+      'background:#14161b', 'border:1px solid #35373d', 'color:#e8eaee',
+      'font:12px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif',
+      'box-shadow:0 8px 24px #000a', 'text-align:left', 'cursor:pointer',
+      'transition:opacity .6s ease', 'opacity:0',
+    ].join(';');
+    box.textContent = NOTICE_TEXT;
+    document.body.append(box);
+
+    // Fade in
+    requestAnimationFrame(() => requestAnimationFrame(() => { box.style.opacity = '1'; }));
+
+    let removed = false;
+    const remove = () => {
+      if (removed) return;
+      removed = true;
+      box.style.opacity = '0';
+      setTimeout(() => box.remove(), 650);
+    };
+    box.addEventListener('click', remove);
+    setTimeout(remove, SHOW_MS);
+  }
+
+  // 1) If the Terms were already accepted, the home screen is visible at load
+  const terms = document.querySelector('#terms');
+  if (!terms || terms.style.display !== 'flex') showNotice();
+
+  // 2) Otherwise show it right after the Terms are accepted (goHome is called then)
+  const originalGoHome = goHome;
+  goHome = function (...args) {
+    const result = originalGoHome.apply(this, args);
+    showNotice();
+    return result;
   };
 })();
 </script></body></html>
