@@ -1847,4 +1847,81 @@ window.CDX_GRUNGE_TIPS={"tips": [{"w": 320, "h": 278, "data": "iVBORw0KGgoAAAANS
     return result;
   };
 })();
+
+/* Fixes:
+   1. Dragging an object no longer turns into a resize or rotate when you touch
+      near the middle of a small object. Handles only respond when you touch the handle itself.
+   2. Text color uses the full color panel (wheel, sliders, hex field, favorites, recent)
+      instead of the basic color input. Changes apply live to the selected text. */
+(() => {
+  'use strict';
+
+  // ---- 1. Smaller, precise handle zones ----
+  // Same rotation math as the app's rotate helper (kept local, since that helper is private)
+  function unrotate(o, p) {
+    const angle = (Number(o.rot) || 0) * Math.PI / 180 * -1;
+    const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+    const dx = p[0] - cx, dy = p[1] - cy;
+    return [cx + dx * Math.cos(angle) - dy * Math.sin(angle), cy + dx * Math.sin(angle) + dy * Math.cos(angle)];
+  }
+
+  obHit = function (p) {
+    const o = cur && cur.ob;
+    if (!o || !cur.vis) return null;
+    const [x, y] = unrotate(o, p);
+    const k = 1 / z;                       // one screen pixel in canvas units
+    const rotateRadius = 16 * k;           // rotate handle sits 25 screen px above the top edge
+    const cornerRadius = 12 * k;           // resize handle only at the corner
+    const bodyMargin = 8 * k;
+
+    if (Math.hypot(x - (o.x + o.w / 2), y - (o.y - 25 * k)) < rotateRadius) return 'r';
+    if (Math.hypot(x - (o.x + o.w), y - (o.y + o.h)) < cornerRadius) return 'h';
+    return x >= o.x - bodyMargin && x <= o.x + o.w + bodyMargin &&
+           y >= o.y - bodyMargin && y <= o.y + o.h + bodyMargin ? 'b' : null;
+  };
+
+  // ---- 2. Full color panel for the selected text ----
+  window.cdxTextColorTarget = false;
+
+  const originalClose = close;
+  close = function () {
+    window.cdxTextColorTarget = false;
+    return originalClose.apply(this, arguments);
+  };
+
+  const originalColorChanged = colorChanged;
+  colorChanged = function () {
+    if (window.cdxTextColorTarget && cur && cur.ob && cur.ob.k === 'text') {
+      cur.ob.col = fg;
+      renderOb(cur);
+      render();
+      drawOv();
+      return;
+    }
+    originalColorChanged();
+  };
+
+  const originalTextUI = textUI;
+  textUI = function () {
+    originalTextUI();
+    const old = document.getElementById('tx_c');
+    if (!old || !cur || !cur.ob) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.dataset.a = 'txcol';
+    btn.title = 'Text color';
+    btn.innerHTML = '<span style="display:inline-block;width:20px;height:20px;border-radius:6px;border:1px solid #fff;vertical-align:middle;background:' + cur.ob.col + '"></span> Color';
+    old.replaceWith(btn);
+  };
+
+  A.txcol = function () {
+    const o = cur && cur.ob;
+    if (!o || o.k !== 'text') return;
+    window.cdxTextColorTarget = true;
+    fg = o.col;
+    ct = 'fg';
+    colUI();
+    sheetName = 'col';
+  };
+})();
 </script></body></html>
