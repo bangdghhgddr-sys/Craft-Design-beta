@@ -302,12 +302,24 @@ function npx(){const d=dims();$('#npx').textContent=`Pixels: ${d.w} × ${d.h}`+(
 function newUI(){open(`<b>New project</b><div class="grid2"><label>Width (cm)<input type="number" id="nw" value="21" step="0.1" min="1"></label><label>Height (cm)<input type="number" id="nh" value="29.7" step="0.1" min="1"></label><label>Resolution (DPI)<select id="nd"><option>72</option><option selected>150</option><option>300</option></select></label><label>Background<select id="nb"><option value="w">White</option><option value="t">Transparent</option></select></label></div><div class="chips">${[['A4',21,29.7],['A5',14.8,21],['Square',20,20],['10×15',10,15],['Story',9,16],['Poster',50,70]].map(a=>`<button data-a="preset" data-w="${a[1]}" data-h="${a[2]}">${a[0]}</button>`).join('')}</div><p id="npx" class="mu"></p><div class="grid2"><button data-a="mkp" class="on">Create</button><button data-a="close">Cancel</button></div>`);npx()}
 /* ---------- files in/out ---------- */
 async function inflate(u){const ds=new DecompressionStream('deflate'),w=ds.writable.getWriter();w.write(u);w.close();return new Uint8Array(await new Response(ds.readable).arrayBuffer())}
-async function readPSD(buf){const v=new DataView(buf),u=new Uint8Array(buf);let o=0;const r16=()=>{o+=2;return v.getUint16(o-2)},r32=()=>{o+=4;return v.getUint32(o-4)},s16=()=>{o+=2;return v.getInt16(o-2)},s32=()=>{o+=4;return v.getInt32(o-4)};
- if(r32()!=0x38425053)throw'Not a PSD file';if(r16()!=1)throw'PSB files are not supported';o+=6;const nc=r16(),h=r32(),w=r32(),dp=r16(),md=r16();if(dp!=8||md!=3)throw'Only 8-bit RGB PSD files are supported';
- r32();r32();const lmLen=r32(),lmEnd=o+lmLen,recs=[];
+async function readPSD(buf){
+ const v=new DataView(buf),u=new Uint8Array(buf);let o=0;
+ const need=n=>{if(!Number.isSafeInteger(n)||n<0||o+n>u.length)throw new Error('PSD is truncated or contains invalid section offsets')};
+ const r16=()=>{need(2);const n=v.getUint16(o);o+=2;return n},r32=()=>{need(4);const n=v.getUint32(o);o+=4;return n},s16=()=>{need(2);const n=v.getInt16(o);o+=2;return n},s32=()=>{need(4);const n=v.getInt32(o);o+=4;return n};
+ if(r32()!==0x38425053)throw new Error('Not a valid PSD file');
+ if(r16()!==1)throw new Error('PSB files are not supported yet');
+ need(6);o+=6;
+ const nc=r16(),h=r32(),w=r32(),dp=r16(),md=r16();
+ if(!w||!h||w>30000||h>30000)throw new Error('Invalid PSD canvas dimensions');
+ if(dp!==8||md!==3)throw new Error('This PSD uses a color mode or bit depth that is not supported yet (supported: 8-bit RGB)');
+ // PSD sections are length-prefixed. Skipping their payloads is essential:
+ // external Photoshop files commonly contain color profiles and image resources.
+ const colorModeLen=r32();need(colorModeLen);o+=colorModeLen;
+ const resourcesLen=r32();need(resourcesLen);o+=resourcesLen;
+ const lmLen=r32();need(lmLen);const lmStart=o,lmEnd=o+lmLen,recs=[];
  const rl=(cp,q,rw,rh)=>{const out=new Uint8Array(rw*rh);for(let y=0;y<rh;y++){const e=q+v.getUint16(cp+y*2);let x=0;while(q<e&&x<rw){let n=u[q++];if(n<128){for(let k=0;k<=n;k++){if(x<rw)out[y*rw+x++]=u[q];q++}}else if(n>128){n=257-n;const b=u[q++];for(let k=0;k<n&&x<rw;k++)out[y*rw+x++]=b}}q=e}return[out,q]};
  const dec=async(c,p,e,rw,rh)=>{if(c==0)return u.slice(p,p+rw*rh);if(c==1)return rl(p,p+rh*2,rw,rh)[0];const d=await inflate(u.subarray(p,e));if(c==3)for(let y=0;y<rh;y++)for(let x=1;x<rw;x++)d[y*rw+x]=(d[y*rw+x]+d[y*rw+x-1])&255;return d};
- if(lmLen&&r32()){const n=Math.abs(s16());for(let i=0;i<n;i++){const L={t:s32(),l:s32(),b:s32(),r:s32(),ch:[]},k=r16();for(let j=0;j<k;j++)L.ch.push({id:s16(),len:r32()});L.bm=(function(k){return Object.keys(PM).find(x=>PM[x]===k)||'source-over'})(String.fromCharCode(u[o+4],u[o+5],u[o+6],u[o+7]));o+=8;L.op=u[o++];o++;L.vis=!(u[o++]&2);o++;const exl=r32(),exEnd=o+exl;r32();r32();const nl=u[o];L.name=String.fromCharCode(...u.slice(o+1,o+1+nl));o+=1+nl+(4-(1+nl)%4)%4;
+ if(lmLen>=4&&r32()){const n=Math.abs(s16());for(let i=0;i<n;i++){const L={t:s32(),l:s32(),b:s32(),r:s32(),ch:[]},k=r16();for(let j=0;j<k;j++)L.ch.push({id:s16(),len:r32()});L.bm=(function(k){return Object.keys(PM).find(x=>PM[x]===k)||'source-over'})(String.fromCharCode(u[o+4],u[o+5],u[o+6],u[o+7]));o+=8;L.op=u[o++];o++;L.vis=!(u[o++]&2);o++;const exl=r32(),exEnd=o+exl;r32();r32();const nl=u[o];L.name=String.fromCharCode(...u.slice(o+1,o+1+nl));o+=1+nl+(4-(1+nl)%4)%4;
    while(o+12<=exEnd){const sg=r32(),key=String.fromCharCode(u[o],u[o+1],u[o+2],u[o+3]);o+=4;const len=r32();if(sg!=0x3842494D&&sg!=0x38423634)break;if(key=='luni'){const c=v.getUint32(o);let s='';for(let q=0;q<c;q++)s+=String.fromCharCode(v.getUint16(o+4+q*2));L.name=s.replace(/\0/g,'')||L.name}o+=len+(len%2)}o=exEnd;recs.push(L)}
   for(const L of recs){const rw=L.r-L.l,rh=L.b-L.t;L.pl={};for(const c of L.ch){const st=o,cm=r16();if(rw>0&&rh>0&&c.id>=-1&&c.id<=2){try{L.pl[c.id]=await dec(cm,st+2,st+c.len,rw,rh)}catch(e){}}o=st+c.len}}}
  const out=[];for(const L of recs){const rw=L.r-L.l,rh=L.b-L.t;if(rw<=0||rh<=0||!L.pl[0])continue;const id=new ImageData(rw,rh),d=id.data,q=L.pl;for(let i=0,n=rw*rh;i<n;i++){d[i*4]=q[0][i];d[i*4+1]=q[1]?q[1][i]:q[0][i];d[i*4+2]=q[2]?q[2][i]:q[0][i];d[i*4+3]=q[-1]?q[-1][i]:255}out.push({L,id})}
