@@ -209,7 +209,7 @@ function objStep(){const o=cur.ob,s=od.o,dx=cc[0]-od.p[0],dy=cc[1]-od.p[1];
  renderOb(cur);render();if(o.k=='text')syncText();drawOv()}
 function pinchStep(){const[a,b]=[...ptrs.values()],k=Math.max(.1,Math.hypot(a[0]-b[0],a[1]-b[1])/pinch.d0),o=cur.ob,s=pinch.o,cxo=s.x+s.w/2,cyo=s.y+s.h/2;
  if(o.k=='text'){o.s=Math.max(6,Math.min(900,s.s*k));renderOb(cur)}else{o.w=s.w*k;o.h=s.h*k}o.x=cxo-o.w/2;o.y=cyo-o.h/2;renderOb(cur);render();if(o.k=='text')syncText();drawOv();dirty=true}
-function newText(p){const l=mk('Add text');l.ob={k:'text',t:'Add text',f:TD.f,s:Math.round(W/12),b:TD.b,i:TD.i,col:fg,x:p[0],y:p[1],w:0,h:0};layers.splice(layers.indexOf(cur)+1,0,l);cur=l;userSel=false;renderOb(l);l.ob.x=p[0]-l.ob.w/2;l.ob.y=p[1]-l.ob.h/2;renderOb(l);render();dirty=true;drawOv();toast('Double-tap the text to edit it')}
+function newText(p){const l=mk('Add text');l.ob={k:'text',t:'Add text',f:TD.f,s:Math.round(W/12),b:TD.b,i:TD.i,col:fg,x:p[0],y:p[1],w:0,h:0};layers.splice(layers.indexOf(cur)+1,0,l);cur=l;userSel=false;renderOb(l);l.ob.x=p[0]-l.ob.w/2;l.ob.y=p[1]-l.ob.h/2;renderOb(l);render();dirty=true;drawOv();textUI();setTimeout(()=>{const t=document.getElementById('tx_t');if(t){t.focus();t.select()}},80)}
 function syncText(){const r=$('#tx_s');if(r&&cur&&cur.ob&&cur.ob.k=='text'){r.value=Math.round(cur.ob.s);$('#tx_sv').textContent=r.value}}
 function textUI(){const o=cur&&cur.ob;if(!o||o.k!='text')return;open(`<b>Edit text</b><textarea id="tx_t" rows="2" style="width:100%;box-sizing:border-box;margin:6px 0;background:#0f1012;color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:7px;font:inherit">${esc(o.t)}</textarea><div class="sl">Size<input type="range" id="tx_s" min="8" max="600" value="${Math.round(o.s)}"><i id="tx_sv">${Math.round(o.s)}</i></div><div class="chips"><button data-a="bb" class="${o.b?'on':''}"><b>B</b></button><button data-a="ib" class="${o.i?'on':''}"><i>I</i></button><input type="color" id="tx_c" value="${o.col}" style="width:40px;height:30px;padding:0"><label class="fb">＋ Font file<input type="file" data-fk="font" accept=".ttf,.otf,.woff,.woff2" multiple></label><button data-a="tdel">Delete</button><button data-a="close" class="on">Done</button></div>${Object.entries(FG).filter(([k,v])=>v.length).map(([k,v])=>`<p class="mu">${k}</p><div class="chips">${v.map(f=>`<button data-a="fpick" data-f="${esc(f)}" class="${o.f==f?'on':''}" style="font-family:'${esc(f)}',sans-serif;font-size:14px">${esc(f)}</button>`).join('')}</div>`).join('')}`);sheetName='text'}
 function txtEdit(f){const o=cur&&cur.ob;if(!o||o.k!='text')return;f(o);renderOb(cur);render();drawOv();dirty=true}
@@ -285,7 +285,9 @@ function drawOv(){const k=1/z;ox.clearRect(0,0,W,H);ox.lineJoin='round';
 setInterval(()=>{if(selP&&!selSoft&&$('#app').style.display!='none'){ant=(ant+1)%14;drawOv()}},130);
 /* ---------- actions (direct touch + pad share these) ---------- */
 function begAct(){if(act)return;const p=cc;if(cur&&cur.lk&&!['hand','zoom','eye','marquee','lasso','wand','selbrush','pathsel','crop','pen'].includes(tool)){down=false;return toast('Layer is locked 🔒')}
- if(tool=='text'||tool=='move'){if(objBegin(p))return;if(tool=='text'){newText(p);down=false;return}}
+ if(tool=='text'&&sheetName==='text'){close();down=false;return}
+ if(tool=='text'){const tl=cur&&cur.ob&&cur.ob.k=='text'&&obHit(p)?cur:pickOb(p);if(tl&&tl.ob&&tl.ob.k=='text'){cur=tl;userSel=true;down=false;textUI();drawOv();return}newText(p);down=false;return}
+ if(tool=='move'){if(objBegin(p))return}
  if(tool=='zoom'){z*=1.5;setZ();down=false;return}if(tool=='wand'){wand(p);down=false;return}
  if(tool=='eye'){act=true;pick(p);return}
  const sl=['marquee','lasso','selbrush','pathsel','crop'].includes(tool);if(!sl&&!cur.vis){down=false;return toast('Layer is hidden')}
