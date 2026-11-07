@@ -1932,6 +1932,8 @@ window.CDX_SET3_TIPS={"tips": [{"w": 360, "h": 57, "data": "iVBORw0KGgoAAAANSUhE
     return true;
   }
 
+  window.cdxLift = liftRasterToObject;
+
   const originalObjBegin = objBegin;
   objBegin = function (p) {
     guideLines = [];
@@ -2224,5 +2226,606 @@ window.CDX_SET3_TIPS={"tips": [{"w": 360, "h": 57, "data": "iVBORw0KGgoAAAANSUhE
   };
 
   A.ledit = b => editLayer(+b.dataset.i);
+})();
+
+/* Logo tool, step 1: outlines only (line, square, perfect circle).
+   - Draw on the canvas by dragging, or use the bottom pad: drag the pad to move the cursor,
+     hold "Draw" to draw from the cursor.
+   - Grid snap (2, 4, 8 or 16 px). Stroke width is fixed.
+   - Each type goes to its own layer: Lines, Squares, Circles. */
+(() => {
+  'use strict';
+  try {
+    const STROKE = 3;
+    const TYPE_NAME = { line: 'Lines', square: 'Squares', circle: 'Circles' };
+    const st = { shape: 'line', grid: 2, gridOn: true, cursor: null, drag: null, padDraw: null, select: false, selSet: new Set(), groupDrag: null };
+
+    // ---- toolbar button ----
+    const toolBar = document.getElementById('tg');
+    const toolButton = document.createElement('button');
+    toolButton.type = 'button';
+    toolButton.dataset.a = 'tool';
+    toolButton.dataset.t = 'logo';
+    toolButton.title = 'Logo tool';
+    toolButton.innerHTML = '<svg class="i" viewBox="0 0 24 24"><path d="M3 18L10 6"/><circle cx="16" cy="9" r="4"/><rect x="4" y="13" width="7" height="7"/></svg>';
+    toolBar.append(toolButton);
+    TN.logo = 'Logo tool';
+
+    // ---- options (top bar) ----
+    const opts = document.getElementById('opts');
+    const panel = document.createElement('span');
+    panel.dataset.o = 'logo';
+    panel.style.cssText = 'display:inline-flex;align-items:center;gap:6px';
+    const shapeSel = document.createElement('select');
+    shapeSel.id = 'lgShape';
+    shapeSel.innerHTML = '<option value="line">Line</option><option value="square">Square</option><option value="circle">Circle</option>';
+    shapeSel.addEventListener('change', () => { st.shape = shapeSel.value; });
+    const gridSel = document.createElement('select');
+    gridSel.id = 'lgGrid';
+    gridSel.innerHTML = '<option value="2">Grid 2 px</option><option value="4">Grid 4 px</option><option value="8">Grid 8 px</option><option value="16">Grid 16 px</option>';
+    gridSel.value = '2';
+    gridSel.addEventListener('change', () => { st.grid = Number(gridSel.value); window.cdxGuide.grid = st.grid; drawOv(); });
+    // ---- Guide: its own button in the toolbar (tap = on/off, hold = choose Grid or Golden ratio) ----
+    const guideToolButton = document.createElement('button');
+    guideToolButton.type = 'button';
+    guideToolButton.id = 'cdGuideTool';
+    guideToolButton.title = 'Guide: tap to turn on/off, hold to choose grid or golden ratio';
+    guideToolButton.setAttribute('aria-label', 'Guide');
+    guideToolButton.innerHTML = '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>';
+    toolBar.append(guideToolButton);
+    let pressTimer = null, longPressed = false;
+    guideToolButton.addEventListener('pointerdown', () => {
+      longPressed = false;
+      pressTimer = setTimeout(() => { longPressed = true; openGuideMenu(); }, 500);
+    });
+    guideToolButton.addEventListener('pointerleave', () => clearTimeout(pressTimer));
+    guideToolButton.addEventListener('pointerup', () => {
+      clearTimeout(pressTimer);
+      if (longPressed) return;
+      const g = window.cdxGuide;
+      g.mode = g.mode === 'off' ? (g.last || 'grid') : 'off';
+      if (g.mode !== 'off') g.last = g.mode;
+      guideToolButton.classList.toggle('on', g.mode !== 'off');
+      drawOv();
+    });
+    guideToolButton.addEventListener('contextmenu', e => e.preventDefault());
+    const paintGuideButton = () => guideToolButton.classList.toggle('on', window.cdxGuide.mode !== 'off');
+
+    function openGuideMenu() {
+      const m = window.cdxGuide.mode;
+      open('<div class="mu"><b>Guide</b></div><div class="grid2">' +
+           `<button type="button" data-a="cdx-guide" data-m="grid" class="${m === 'grid' ? 'on' : ''}">${m === 'grid' ? '✓ ' : ''}Grid</button>` +
+           `<button type="button" data-a="cdx-guide" data-m="golden" class="${m === 'golden' ? 'on' : ''}">${m === 'golden' ? '✓ ' : ''}Golden ratio</button>` +
+           '</div><div class="mu" style="margin-top:8px">Snaps the brush, shapes, logo and images to the chosen guide.</div>' +
+           '<button type="button" data-a="close">Close</button>');
+      sheetName = 'guide';
+    }
+    A['cdx-guide'] = b => {
+      window.cdxGuide.mode = b.dataset.m;
+      window.cdxGuide.last = b.dataset.m;
+      paintGuideButton();
+      close();
+      drawOv();
+    };
+    panel.append(shapeSel, gridSel);
+    opts.append(panel);
+
+    // ---- bottom pad row: Draw button (hold) + the same pad as the brush ----
+    const padRow = document.getElementById('padrow');
+    const pad = document.getElementById('pad');
+    const pbtn = document.getElementById('pbtn');
+    const drawBtn = document.createElement('button');
+    drawBtn.type = 'button';
+    drawBtn.textContent = '✏️ Draw';
+    drawBtn.addEventListener('click', e => {
+      e.preventDefault();
+      if (!st.padDraw) {
+        st.padDraw = { start: snap(cursor()) };          // first tap: start here
+        drawBtn.textContent = '✔ Finish';
+        drawOv();
+      } else {
+        const d = st.padDraw;                             // second tap: finish the shape
+        st.padDraw = null;
+        drawBtn.textContent = '✏️ Draw';
+        commit(d.start, snap(cursor()), st.shape);
+      }
+    });
+
+    const mkBtn = (text, fn) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = text; b.addEventListener('click', e => { e.preventDefault(); fn(); }); return b; };
+    const artBtn = mkBtn('Art', () => startArt());
+    const doneBtn = mkBtn('Enter ↵', () => finishArt(true));
+    const cancelBtn = mkBtn('Esc', () => finishArt(false));
+    const clearBtn = mkBtn('Clear', () => {
+      const shapes = layers.filter(l => l.logoType);
+      if (!shapes.length) return toast('No shapes to clear');
+      if (!confirm('Delete all shapes (lines, squares, circles)? The coloured logo stays.')) return;
+      if (st.art) finishArt(false);
+      layers = layers.filter(l => !l.logoType);
+      if (!layers.length) layers = [mk('Background')];
+      if (!layers.includes(cur)) cur = layers[layers.length - 1];
+      dirty = true; render(); drawOv(); layersUI();
+    });
+    const setArtUI = on => { artBtn.style.display = on ? 'none' : ''; doneBtn.style.display = on ? '' : 'none'; cancelBtn.style.display = on ? '' : 'none'; };
+    setArtUI(false);
+
+    const originalPadUI = padUI;
+    padUI = function () {
+      if (tool !== 'logo') return originalPadUI();
+      padRow.style.display = 'flex';
+      ov.style.touchAction = 'none';
+      pbtn.replaceChildren(drawBtn, artBtn, doneBtn, cancelBtn, clearBtn);
+      pad.textContent = st.art ? 'Tap a closed shape to colour it. Enter to finish, Esc to cancel.' : 'Drag to move the cursor, hold Draw to draw a ' + st.shape + '.';
+      drawOv();
+    };
+
+
+    // ---- Art: tap closed areas to colour them with the current colour ----
+    // Finds every closed area of the logo shapes (areas touching the canvas edge are outside)
+    function findAreas() {
+      const typeLs = ['line', 'square', 'circle', 'triangle'].map(t => layers.find(x => x.logoType === t)).filter(Boolean);
+      if (!typeLs.length) return null;
+      const walls = document.createElement('canvas');
+      walls.width = W; walls.height = H;
+      const wq = walls.getContext('2d');
+      typeLs.forEach(l => wq.drawImage(l.c, 0, 0));
+      const d = wq.getImageData(0, 0, W, H).data;
+      const wall = new Uint8Array(W * H);
+      for (let i = 0; i < W * H; i++) if (d[i * 4 + 3] > 40) wall[i] = 1;
+      const label = new Int32Array(W * H).fill(-1);
+      const areas = [];
+      const stack = new Int32Array(W * H);
+      for (let s0 = 0; s0 < W * H; s0++) {
+        if (wall[s0] || label[s0] !== -1) continue;
+        const id = areas.length;
+        let sp = 0; stack[sp++] = s0; label[s0] = id;
+        const pix = []; let edge = false;
+        while (sp) {
+          const i = stack[--sp];
+          pix.push(i);
+          const x = i % W, y = (i / W) | 0;
+          if (x === 0 || y === 0 || x === W - 1 || y === H - 1) edge = true;
+          if (x > 0 && !wall[i - 1] && label[i - 1] === -1) { label[i - 1] = id; stack[sp++] = i - 1; }
+          if (x < W - 1 && !wall[i + 1] && label[i + 1] === -1) { label[i + 1] = id; stack[sp++] = i + 1; }
+          if (y > 0 && !wall[i - W] && label[i - W] === -1) { label[i - W] = id; stack[sp++] = i - W; }
+          if (y < H - 1 && !wall[i + W] && label[i + W] === -1) { label[i + W] = id; stack[sp++] = i + W; }
+        }
+        areas.push({ pix, inside: !edge && pix.length > 30 });
+      }
+      return { typeLs, label, areas };
+    }
+
+    // Enter: colour every closed area automatically, each area in its own layer, then remove the shapes
+    const AUTO_COLORS = ['#e63946', '#f77f00', '#fcbf49', '#2a9d8f', '#4c8dff', '#6a4c93', '#ff69b4', '#8d5524'];
+    function autoFinish() {
+      if (st.art) { st.art.layer && (layers = layers.filter(l => l !== st.art.layer)); st.art = null; setArtUI(false); }
+      const found = findAreas();
+      if (!found) return toast('Draw some shapes first');
+      const inside = found.areas.filter(a => a.inside);
+      if (!inside.length) return toast('No closed areas. Draw closed shapes first');
+      const firstIndex = Math.min(...found.typeLs.map(l => layers.indexOf(l)));
+      const newLayers = [];
+      inside.forEach((area, n) => {
+        const l = mk('Area ' + (n + 1));
+        const img = l.x.createImageData(W, H);
+        const [r, g, b] = rgb(AUTO_COLORS[n % AUTO_COLORS.length]);
+        for (const i of area.pix) {
+          img.data[i * 4] = r; img.data[i * 4 + 1] = g; img.data[i * 4 + 2] = b; img.data[i * 4 + 3] = 255;
+        }
+        l.x.putImageData(img, 0, 0);
+        newLayers.push(l);
+      });
+      layers = layers.filter(l => !l.logoType);
+      const at = Math.max(0, Math.min(firstIndex, layers.length));
+      layers.splice(at, 0, ...newLayers);
+      cur = newLayers[newLayers.length - 1];
+      dirty = true;
+      render(); drawOv(); layersUI();
+      toast('Logo made: ' + inside.length + ' areas');
+    }
+
+    function startArt() {
+      if (st.art) return;
+      const found = findAreas();
+      if (!found) return toast('Draw some shapes first');
+      if (!found.areas.some(a => a.inside)) return toast('No closed areas. Draw closed shapes first');
+      const firstIndex = Math.min(...found.typeLs.map(l => layers.indexOf(l)));
+      const art = mk('Art');
+      layers.splice(firstIndex, 0, art);
+      cur = art;
+      st.art = { layer: art, typeLs: found.typeLs, label: found.label, areas: found.areas, img: art.x.getImageData(0, 0, W, H) };
+      setArtUI(true);
+      render(); drawOv();
+    }
+
+    function artTap(e) {
+      const a = st.art;
+      const p = pt(e);
+      const x = Math.floor(p[0]), y = Math.floor(p[1]);
+      if (x < 0 || y < 0 || x >= W || y >= H) return;
+      const area = a.areas[a.label[y * W + x]];
+      if (!area || !area.inside) return toast('Tap inside a closed shape');
+      const [r, g, b] = rgb(fg);
+      for (const i of area.pix) {
+        a.img.data[i * 4] = r; a.img.data[i * 4 + 1] = g; a.img.data[i * 4 + 2] = b; a.img.data[i * 4 + 3] = 255;
+      }
+      a.layer.x.putImageData(a.img, 0, 0);
+      render();
+    }
+    function finishArt(save) {
+      const a = st.art;
+      if (!a) return;
+      st.art = null;
+      setArtUI(false);
+      if (save) {
+        layers = layers.filter(l => !l.logoType);   // remove every shape layer
+        cur = a.layer;
+        dirty = true;
+        toast('Logo finished');
+      } else {
+        layers = layers.filter(l => l !== a.layer);
+        cur = layers.find(l => l.logoType) || layers[layers.length - 1];
+      }
+      render(); drawOv(); layersUI();
+    }
+    window.addEventListener('keydown', e => {
+      if (tool !== 'logo' || !st.art) return;
+      if (e.key === 'Enter') { e.preventDefault(); finishArt(true); }
+      if (e.key === 'Escape') { e.preventDefault(); finishArt(false); }
+    });
+
+
+    // ---- Copy (app-wide): duplicates the current layer ----
+    const topBar = document.getElementById('top');
+    const copyTop = document.createElement('button');
+    copyTop.type = 'button';
+    copyTop.id = 'cdCopy';
+    copyTop.textContent = 'Copy';
+    copyTop.title = 'Copy the current layer';
+    copyTop.addEventListener('click', e => { e.preventDefault(); if (cur) A.ldup(); });
+    topBar.querySelector('[data-a="home"]').after(copyTop);
+
+    // ---- Layers panel: Copy and Select (multi-select layers to move together) ----
+    const originalLayersUI = layersUI;
+    layersUI = function () {
+      originalLayersUI();
+      const sheetEl = document.getElementById('sheet');
+      if (!sheetEl || sheetEl.querySelector('#cdLayerTools')) return;
+      const bar = document.createElement('div');
+      bar.id = 'cdLayerTools';
+      bar.className = 'grid2';
+      bar.style.marginTop = '8px';
+      bar.innerHTML = '<button type="button" data-cd="copy">Copy</button><button type="button" data-cd="group" style="' + (st.select ? 'background:#4c8dff;color:#fff' : '') + '">Group</button>';
+      const close = sheetEl.querySelector('[data-a="close"]');
+      if (close) close.parentNode.insertBefore(bar, close); else sheetEl.append(bar);
+      sheetEl.querySelectorAll('.row').forEach(row => {
+        if (row.dataset.cdHold) return;
+        row.dataset.cdHold = '1';
+        let t = null;
+        row.addEventListener('pointerdown', () => {
+          t = setTimeout(() => {
+            const l = layers[+row.dataset.i];
+            if (!l) return;
+            st.suppressLsel = true;          // the click after a hold must not toggle again
+            st.select = true;
+            st.selSet.add(l);
+            toast('Selected. Tap more layers, then drag one with Move');
+            layersUI();
+          }, 450);
+        });
+        const stop = () => clearTimeout(t);
+        row.addEventListener('pointerup', stop);
+        row.addEventListener('pointerleave', stop);
+        row.addEventListener('pointercancel', stop);
+      });
+      const count = document.createElement('div');
+      count.className = 'mu';
+      count.style.marginTop = '6px';
+      count.textContent = 'Group: ' + (st.select ? 'on' : 'off') + ' · selected ' + st.selSet.size;
+      bar.after(count);
+      sheetEl.querySelectorAll('.row').forEach(row => {
+        const l = layers[+row.dataset.i];
+        const picked = !!(l && st.selSet.has(l));
+        row.style.background = picked ? 'rgba(255,61,219,.18)' : '';
+        if (picked && !row.querySelector('.cd-tick')) {
+          const tick = document.createElement('span');
+          tick.className = 'cd-tick';
+          tick.textContent = '✓';
+          tick.style.cssText = 'color:#ff3ddb;font-weight:700;margin-left:4px';
+          row.querySelector('span:not(.mu)')?.after(tick);
+        }
+        row.style.outline = picked ? '2px solid #ff3ddb' : '';
+        row.style.boxShadow = l && l.grp ? 'inset 4px 0 0 ' + groupColor(l.grp) : '';
+      });
+    };
+    document.getElementById('sheet').addEventListener('click', e => {
+      const b = e.target.closest('[data-cd]');
+      if (!b) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (b.dataset.cd === 'copy') { if (cur) A.ldup(); }
+      if (b.dataset.cd === 'group') {
+        st.select = !st.select;
+        if (st.select) {
+          toast('Group on: tap the layers you want, then drag one with Move');
+        } else {
+          st.selSet.clear();
+          toast('Group off: layers released');
+        }
+        layersUI();
+      }
+
+    }, true);
+    const originalLsel = A.lsel;
+    A.lsel = function (b) {
+      if (st.suppressLsel) { st.suppressLsel = false; return; }
+      if (st.select) {
+        const l = layers[+b.dataset.i];
+        if (l) {
+          if (st.selSet.has(l)) st.selSet.delete(l); else st.selSet.add(l);
+          layersUI();
+        }
+        return;
+      }
+      return originalLsel.apply(this, arguments);
+    };
+
+    // ---- Guide: grid or golden ratio, for every tool (tap = on/off, long press = choose) ----
+    window.cdxGuide = { mode: 'off', grid: 2 };
+    const GOLD = [0.382, 0.5, 0.618];
+    const origPt = pt;
+    pt = function (e) {
+      const p = origPt(e);
+      const g = window.cdxGuide;
+      if (g.mode === 'off' || tool === 'hand') return p;
+      if (g.mode === 'grid') {
+        const step = g.grid;
+        return [Math.round(p[0] / step) * step, Math.round(p[1] / step) * step];
+      }
+      // golden: snap to the golden lines when close (about 8 screen px)
+      const near = 8 / z;
+      const sx = GOLD.map(f => f * W).find(t => Math.abs(p[0] - t) < near);
+      const sy = GOLD.map(f => f * H).find(t => Math.abs(p[1] - t) < near);
+      return [sx !== undefined ? sx : p[0], sy !== undefined ? sy : p[1]];
+    };
+
+    // ---- helpers ----
+    function cursor() {
+      if (!st.cursor) st.cursor = [W / 2, H / 2];
+      return st.cursor;
+    }
+    function snap(p) {
+      if (!st.gridOn) return [p[0], p[1]];
+      const g = st.grid;
+      return [Math.round(p[0] / g) * g, Math.round(p[1] / g) * g];
+    }
+    function layerOf(type) {
+      const name = TYPE_NAME[type];
+      let l = layers.find(x => x.logoType === type);
+      if (!l) {
+        l = mk(name);
+        l.logoType = type;
+        layers.splice(layers.indexOf(cur) + 1, 0, l);
+      }
+      return l;
+    }
+    function outline(ctx, type, a, b) {
+      ctx.beginPath();
+      if (type === 'line') {
+        ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+      } else if (type === 'circle') {
+        const dx = b[0] - a[0], dy = b[1] - a[1];
+        const s = Math.max(1, Math.max(Math.abs(dx), Math.abs(dy)));
+        const x = dx < 0 ? a[0] - s : a[0], y = dy < 0 ? a[1] - s : a[1];
+        ctx.arc(x + s / 2, y + s / 2, s / 2, 0, Math.PI * 2);
+      } else {
+        const dx = b[0] - a[0], dy = b[1] - a[1];
+        const s = Math.max(1, Math.max(Math.abs(dx), Math.abs(dy)));
+        ctx.rect(dx < 0 ? a[0] - s : a[0], dy < 0 ? a[1] - s : a[1], s, s);
+      }
+    }
+    function commit(a, b, type) {
+      if (a[0] === b[0] && a[1] === b[1]) return;
+      const target = layerOf(type);
+      cur = target;
+      push();
+      target.x.save();
+      target.x.strokeStyle = fg;
+      target.x.lineWidth = STROKE;
+      target.x.lineCap = 'round';
+      target.x.lineJoin = 'round';
+      outline(target.x, type, a, b);
+      target.x.stroke();
+      target.x.restore();
+      dirty = true;
+      render();
+      drawOv();
+    }
+
+
+    // ---- Groups: keep layers separate, move them together, release any time (never merged) ----
+    function groupColor(id) {
+      let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) % 360;
+      return 'hsl(' + h + ' 85% 60%)';
+    }
+    function makeGroup() {
+      const arr = [...st.selSet];
+      if (arr.length < 2) return toast('Selected ' + arr.length + ' layer(s). Tap Select, then tap at least 2 layers');
+      const id = 'g' + Date.now().toString(36);
+      arr.forEach(l => { l.grp = id; });
+      st.selSet.clear();
+      st.select = false;
+      dirty = true;
+      toast('Grouped ' + arr.length + ' layers');
+      layersUI();
+    }
+    function ungroup() {
+      const targets = st.selSet.size ? [...st.selSet] : layers.filter(l => cur && cur.grp && l.grp === cur.grp);
+      if (!targets.length) return toast('Select a grouped layer first');
+      targets.forEach(l => { delete l.grp; });
+      st.selSet.clear();
+      dirty = true;
+      toast('Ungrouped');
+      layersUI();
+    }
+    function groupMembers() {
+      if (st.selSet.size) return [...st.selSet];
+      if (cur && cur.grp) return layers.filter(l => l.grp === cur.grp);
+      return [];
+    }
+
+    // ---- moving selected layers together (Move tool) ----
+    function groupDown(e) {
+      const members = groupMembers();
+      if (tool !== 'move' || !members.length) return false;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const start = pt(e);
+      const origins = new Map();
+      for (const l of members) {
+        if (l.lk) continue;
+        if (!l.ob && window.cdxLift) { cur = l; window.cdxLift(l); }
+        if (l.ob) origins.set(l, { x: l.ob.x, y: l.ob.y });
+      }
+      st.groupDrag = { start, origins, pointer: e.pointerId };
+      ov.setPointerCapture(e.pointerId);
+      return true;
+    }
+    function groupMove(e) {
+      const g = st.groupDrag;
+      if (!g || e.pointerId !== g.pointer) return;
+      e.preventDefault();
+      const p = pt(e);
+      const dx = p[0] - g.start[0], dy = p[1] - g.start[1];
+      for (const [l, o] of g.origins) { l.ob.x = o.x + dx; l.ob.y = o.y + dy; renderOb(l); }
+      render(); drawOv();
+    }
+    function groupUp(e) {
+      const g = st.groupDrag;
+      if (!g || e.pointerId !== g.pointer) return;
+      st.groupDrag = null;
+      dirty = true;
+      layersUI();
+    }
+
+    // ---- overlay: grid, cursor and live preview ----
+    function drawGrid(grid, k) {
+      const step = grid * Math.max(1, Math.ceil(6 / (grid * z)));
+      const major = step * 5;
+      const drawLines = (every, color, lw) => {
+        ox.strokeStyle = color; ox.lineWidth = lw; ox.beginPath();
+        for (let x = 0; x <= W; x += every) { ox.moveTo(x, 0); ox.lineTo(x, H); }
+        for (let y = 0; y <= H; y += every) { ox.moveTo(0, y); ox.lineTo(W, y); }
+        ox.stroke();
+      };
+      ox.save();
+      drawLines(step, 'rgba(150,190,235,.28)', k);
+      drawLines(major, 'rgba(70,120,200,.42)', 1.2 * k);
+      ox.restore();
+    }
+
+    const originalDrawOv = drawOv;
+    drawOv = function () {
+      originalDrawOv();
+      const k = 1 / z;
+      const guide = window.cdxGuide;
+      if (guide.mode === 'golden') {
+        ox.save();
+        ox.strokeStyle = 'rgba(255,61,219,.55)';
+        ox.lineWidth = 1 * k;
+        ox.setLineDash([6 * k, 4 * k]);
+        ox.beginPath();
+        GOLD.forEach(f => { ox.moveTo(f * W, 0); ox.lineTo(f * W, H); ox.moveTo(0, f * H); ox.lineTo(W, f * H); });
+        ox.stroke();
+        ox.restore();
+      }
+      if (tool !== 'logo') {
+        if (guide.mode === 'grid') drawGrid(guide.grid, k);
+        return;
+      }
+      if (guide.mode === 'grid') drawGrid(guide.grid, k);
+      if (false) {
+        // graph paper: light minor lines, darker major line every 5 cells; spacing never gets too tight
+        const step = st.grid * Math.max(1, Math.ceil(6 / (st.grid * z)));
+        const major = step * 5;
+        const drawLines = (every, color, lw) => {
+          ox.strokeStyle = color; ox.lineWidth = lw; ox.beginPath();
+          for (let x = 0; x <= W; x += every) { ox.moveTo(x, 0); ox.lineTo(x, H); }
+          for (let y = 0; y <= H; y += every) { ox.moveTo(0, y); ox.lineTo(W, y); }
+          ox.stroke();
+        };
+        ox.save();
+        drawLines(step, 'rgba(150,190,235,.28)', k);
+        drawLines(major, 'rgba(70,120,200,.42)', 1.2 * k);
+        ox.restore();
+      }
+      const d = st.drag || st.padDraw;
+      const c = cursor();
+      if (d) {
+        ox.save();
+        ox.strokeStyle = fg;
+        ox.lineWidth = STROKE;
+        ox.lineCap = 'round';
+        outline(ox, st.drag ? st.drag.type : st.shape, d.start, st.drag ? st.drag.p : snap(c));
+        ox.stroke();
+        ox.restore();
+      }
+      // snapped point: a clear dot so you see where the grid holds the shape
+      ox.save();
+      ox.fillStyle = '#ff3ddb';
+      ox.beginPath(); ox.arc(c[0], c[1], 3 * k, 0, Math.PI * 2); ox.fill();
+      ox.restore();
+      ox.save();
+      ox.strokeStyle = '#ff3ddb';
+      ox.lineWidth = k;
+      ox.beginPath();
+      ox.moveTo(c[0] - 10 * k, c[1]); ox.lineTo(c[0] + 10 * k, c[1]);
+      ox.moveTo(c[0], c[1] - 10 * k); ox.lineTo(c[0], c[1] + 10 * k);
+      ox.stroke();
+      ox.restore();
+    };
+
+    // ---- canvas: drag to draw, tap to place the cursor ----
+    ov.addEventListener('pointerdown', e => {
+      if (groupDown(e)) return;
+      if (tool !== 'logo' || (e.button && e.button !== 0)) return;
+      if (st.art) { e.preventDefault(); e.stopImmediatePropagation(); artTap(e); return; }
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const p = snap(pt(e));
+      st.cursor = p;
+      st.drag = { type: st.shape, start: p, p, pointer: e.pointerId };
+      ov.setPointerCapture(e.pointerId);
+      drawOv();
+    }, true);
+    ov.addEventListener('pointermove', e => {
+      const d = st.drag;
+      if (!d || e.pointerId !== d.pointer) return;
+      e.preventDefault();
+      d.p = snap(pt(e));
+      st.cursor = d.p;
+      drawOv();
+    }, true);
+    const endCanvasDrag = e => {
+      const d = st.drag;
+      if (!d || e.pointerId !== d.pointer) return;
+      st.drag = null;
+      commit(d.start, d.p, d.type);
+    };
+    ov.addEventListener('pointermove', groupMove, true);
+    ov.addEventListener('pointerup', e => { groupUp(e); endCanvasDrag(e); }, true);
+    ov.addEventListener('pointercancel', endCanvasDrag, true);
+
+    // ---- pad drag moves the cursor (same feel as the brush pad) ----
+    pad.addEventListener('pointermove', e => {
+      if (tool !== 'logo' || e.buttons === 0) return;
+      const c = cursor();
+      const k = 1 / z;
+      st.cursor = [Math.max(0, Math.min(W, c[0] + e.movementX * k)), Math.max(0, Math.min(H, c[1] + e.movementY * k))];
+      if (st.padDraw) { /* drawing while moving the cursor */ }
+      drawOv();
+    });
+  } catch (err) {
+    console.error('Logo tool failed to load', err);
+  }
 })();
 </script></body></html>
