@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Craft Design</title><meta name="description" content="Craft Design: a mobile-friendly design app for drawing, layers, brushes, text, shapes and PSD files."><meta name="theme-color" content="#07112c"><link rel="icon" href="favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png"><link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png"><link rel="manifest" href="manifest.json"><meta property="og:type" content="website"><meta property="og:title" content="Craft Design"><meta property="og:description" content="Craft Design: a mobile-friendly design app for drawing, layers, brushes, text, shapes and PSD files."><meta property="og:image" content="https://bangdghhgddr-sys.github.io/Craft-Design-beta/social-preview.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Craft Design"><meta name="twitter:image" content="https://bangdghhgddr-sys.github.io/Craft-Design-beta/social-preview.png">
+<!DOCTYPE html><html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Craft Design</title><meta name="description" content="Craft Design: a mobile-friendly design app for drawing, layers, brushes, text, shapes and PSD files."><meta name="theme-color" content="#07112c"><meta name="author" content="Enad"><meta name="copyright" content="Craft Design by Enad"><link rel="icon" href="favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png"><link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png"><link rel="manifest" href="manifest.json"><meta property="og:type" content="website"><meta property="og:title" content="Craft Design"><meta property="og:description" content="Craft Design: a mobile-friendly design app for drawing, layers, brushes, text, shapes and PSD files."><meta property="og:image" content="https://bangdghhgddr-sys.github.io/Craft-Design-beta/social-preview.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Craft Design"><meta name="twitter:image" content="https://bangdghhgddr-sys.github.io/Craft-Design-beta/social-preview.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@400;700&family=Poppins:wght@400;700&family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&family=Lato:wght@400;700&family=Raleway:wght@400;700&family=Bebas+Neue&family=Oswald:wght@400;700&family=Anton&family=Archivo+Black&family=Playfair+Display:wght@400;700&family=Merriweather:wght@400;700&family=Lora:wght@400;700&family=Cormorant+Garamond:wght@400;700&family=Pacifico&family=Lobster&family=Dancing+Script:wght@400;700&family=Great+Vibes&family=Roboto+Mono:wght@400;700&family=Cairo:wght@400;700&display=swap">
 <style>
 :root{--bg:#0d0d0f;--pn:#17181b;--p2:#202226;--tx:#e8eaee;--mu:#8b919c;--ac:#4c8dff;--bd:#2c2f35;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -74,26 +74,112 @@ const img=b=>new Promise((r,j)=>{const u=URL.createObjectURL(b),i=new Image();i.
 const toC=im=>{const c=document.createElement('canvas');c.width=im.width;c.height=im.height;c.getContext('2d').drawImage(im,0,0);return c};
 const blobOf=(c,t)=>new Promise(r=>c.toBlob(r,t));
 async function saveProj(){if(!P||saving)return;saving=true;try{const L=[];for(const l of layers){let ob=null;if(l.ob){ob={...l.ob};if(ob.k=='img'){ob.buf=await(await blobOf(ob.im)).arrayBuffer();delete ob.im}}
-  L.push({name:l.name,vis:l.vis,op:l.op,bm:l.bm,lk:l.lk,ob,buf:await(await blobOf(l.c)).arrayBuffer()})}
+  L.push({name:l.name,vis:l.vis,op:l.op,bm:l.bm,lk:l.lk,style:l.style?JSON.parse(JSON.stringify(l.style)):null,ob,buf:await(await blobOf(l.c)).arrayBuffer()})}
  const th=document.createElement('canvas'),k=Math.min(220/W,220/H);th.width=Math.round(W*k)||1;th.height=Math.round(H*k)||1;const c=th.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,th.width,th.height);c.drawImage(cv,0,0,th.width,th.height);
  await tx('p','readwrite',s=>s.put({...P,bs:BS,fav:FAV,t:Date.now(),thumb:th.toDataURL('image/jpeg',.7),layers:L}));dirty=false;return true}catch(e){toast('Could not save to the gallery')}finally{saving=false}}
 async function goHome(save=true){if(save&&P&&dirty)await saveProj();P=null;close();$('#app').style.display='none';$('#home').style.display='flex';let L=[];try{L=await tx('p','readonly',s=>s.getAll())}catch(e){}L.sort((a,b)=>b.t-a.t);
  $('#projs').innerHTML=`<div class="card add" data-a="nw"><div>＋</div>New project</div>`+L.map(p=>`<div class="card"><img src="${p.thumb}"><b>${esc(p.name)}</b><small>${p.w}×${p.h}px · ${new Date(p.t).toLocaleDateString('en-GB')}</small><div class="cb"><button data-a="op" data-id="${p.id}">Edit</button><button data-a="pm2" data-id="${p.id}">⋯</button></div></div>`).join('')}
 async function openProj(id){const p=await tx('p','readonly',s=>s.get(id));if(!p)return;toast('Opening…');P={id:p.id,name:p.name,w:p.w,h:p.h,dpi:p.dpi||72};docInit(p.w,p.h);if(p.bs)for(const k in p.bs)Object.assign(BS[k]||(BS[k]={}),p.bs[k]);if(p.fav)FAV=p.fav;
- for(const l of p.layers){const m=mk(l.name);m.vis=l.vis;m.op=l.op;m.bm=l.bm||'source-over';m.lk=!!l.lk;m.x.drawImage(await img(new Blob([l.buf],{type:'image/png'})),0,0);if(l.ob){m.ob={...l.ob};if(l.ob.k=='img'){m.ob.im=toC(await img(new Blob([l.ob.buf],{type:'image/png'})));delete m.ob.buf}}layers.push(m)}cur=layers[layers.length-1];enter(false)}
+ for(const l of p.layers){const m=mk(l.name);m.vis=l.vis;m.op=l.op;m.bm=l.bm||'source-over';m.lk=!!l.lk;m.style=l.style?JSON.parse(JSON.stringify(l.style)):null;m.x.drawImage(await img(new Blob([l.buf],{type:'image/png'})),0,0);if(l.ob){m.ob={...l.ob};if(l.ob.k=='img'){m.ob.im=toC(await img(new Blob([l.ob.buf],{type:'image/png'})));delete m.ob.buf}}layers.push(m)}cur=layers[layers.length-1];enter(false)}
 function enter(isNew){$('#home').style.display='none';$('#app').style.display='flex';$('#pname').value=P.name;fit();render();setTool(tool);paintSw();dirty=!!isNew;if(isNew)saveProj()}
 /* ---------- document ---------- */
 function mk(name){const c=document.createElement('canvas');c.width=W;c.height=H;return{id:nid++,name,c,x:c.getContext('2d',{willReadFrequently:true}),vis:true,op:1,bm:'source-over',lk:false,ob:null}}
-function docInit(w,h){W=w;H=h;cv.width=ov.width=W;cv.height=ov.height=H;nid=1;undo=[];redo=[];layers=[];selP=null;pen=[];si=-1;cc=[w/2,h/2];csrc=null;od=null;pinch=null}
+function docInit(w,h){histBase=null;W=w;H=h;cv.width=ov.width=W;cv.height=ov.height=H;nid=1;undo=[];redo=[];layers=[];selP=null;pen=[];si=-1;cc=[w/2,h/2];csrc=null;od=null;pinch=null}
 function newDoc(w,h,tr){docInit(w,h);const b=mk('Background');if(!tr){b.x.fillStyle='#fff';b.x.fillRect(0,0,W,H)}layers=[b];cur=b}
 function setZ(){cv.style.width=ov.style.width=W*z+'px';cv.style.height=ov.style.height=H*z+'px';drawOv()}
 function fit(){z=Math.max(.02,Math.min((vp.clientWidth-20)/W,(vp.clientHeight-20)/H));setZ()}
 function render(){cx.clearRect(0,0,W,H);for(const l of layers)if(l.vis){cx.globalAlpha=l.op;cx.globalCompositeOperation=l.bm||'source-over';cx.drawImage(sbOn&&l===cur?sComp():l.c,0,0)}cx.globalAlpha=1;cx.globalCompositeOperation='source-over'}
 function newPaintLayer(n){const l=mk(n);layers.splice(layers.indexOf(cur)+1,0,l);cur=l;userSel=false;if(sheetName=='layers'&&sheet.style.display=='block')layersUI();return l}
-function push(){cur.ob=null;undo.push({l:cur,d:cur.x.getImageData(0,0,W,H)});if(undo.length>12)undo.shift();redo=[];dirty=true}
-function swap(a,b){const e=a.pop();if(!e)return;if(!layers.includes(e.l))return swap(a,b);b.push({l:e.l,d:e.l.x.getImageData(0,0,W,H)});e.l.x.putImageData(e.d,0,0);render();dirty=true}
+function push(){if(cur)cur.ob=null;dirty=true}
+/* ---- Undo / Redo: one step per user action. ----
+   A step is a full snapshot of the document: layer order, layer settings, objects,
+   styles and pixels. The app records the state just before the next action starts,
+   so one stroke, one drag, one menu change or one Done = one undo step. */
+var histBase=null,HIST_MAX_STEPS=30,HIST_MAX_BYTES=160*1024*1024,histImgIds=new WeakMap(),histImgSeq=1;
+function histImgId(c){if(!c)return 0;let id=histImgIds.get(c);if(!id){id=histImgSeq++;histImgIds.set(c,id)}return id}
+function histObCopy(o){if(!o)return null;const n={...o};if(o.cells)n.cells=Object.fromEntries(Object.entries(o.cells).map(([k,v])=>[k,{...v}]));return n}
+function histKey(o){return o?JSON.stringify({...o,im:o.im?histImgId(o.im):null}):'null'}
+function histSnap(){
+  let bytes=0;
+  const items=layers.map(l=>{const px=l.x.getImageData(0,0,W,H);bytes+=px.data.length;
+    return{layer:l,vis:l.vis,op:l.op,bm:l.bm,lk:l.lk,name:l.name,ob:histObCopy(l.ob),style:l.style?JSON.parse(JSON.stringify(l.style)):null,px}});
+  return{W,H,cur,items,bytes};
+}
+function histPixelsEqual(p,q){
+  const a=p.data,b=q.data;if(a.length!==b.length)return false;
+  const A=new Uint32Array(a.buffer,a.byteOffset,a.length>>2),B=new Uint32Array(b.buffer,b.byteOffset,b.length>>2);
+  for(let i=0;i<A.length;i++)if(A[i]!==B[i])return false;
+  return true;
+}
+function histSame(a,b){
+  if(a.W!==b.W||a.H!==b.H)return true;            // canvas was resized (crop): not undoable, just resync
+  if(a.cur!==b.cur||a.items.length!==b.items.length)return false;
+  for(let i=0;i<a.items.length;i++){
+    const x=a.items[i],y=b.items[i];
+    if(x.layer!==y.layer||x.vis!==y.vis||x.op!==y.op||x.bm!==y.bm||x.lk!==y.lk||x.name!==y.name)return false;
+    if(histKey(x.ob)!==histKey(y.ob))return false;
+    if(JSON.stringify(x.style)!==JSON.stringify(y.style))return false;
+    if(!histPixelsEqual(x.px,y.px))return false;
+  }
+  return true;
+}
+function histTrim(arr){
+  let total=arr.reduce((s,e)=>s+e.bytes,0);
+  while(arr.length&&(arr.length>HIST_MAX_STEPS||total>HIST_MAX_BYTES)){total-=arr[0].bytes;arr.shift()}
+}
+function histRefresh(){
+  const u=document.querySelector('[data-a="undo"]'),r=document.querySelector('[data-a="redo"]');
+  if(u)u.disabled=!undo.length;if(r)r.disabled=!redo.length;
+}
+// While a live edit is still open (Layer Style panel, Adjust preview, layer workspace), the
+// changes belong to that edit and become one step only when it is finished.
+function histHeld(){return !!apType||!!(window.__cdStyleOpen&&window.__cdStyleOpen())||!!(window.__cdSubActive&&window.__cdSubActive())}
+// Record any change made since the last step. Called before every new action and before undo/redo.
+function histCommit(){
+  if(histHeld())return;
+  const now=histSnap();
+  if(histBase&&!histSame(histBase,now)){undo.push(histBase);histTrim(undo);redo.length=0;dirty=true}
+  histBase=now;
+  histRefresh();
+}
+function histApply(s){
+  layers=s.items.map(it=>it.layer);
+  for(const m of s.items){
+    const l=m.layer;
+    l.vis=m.vis;l.op=m.op;l.bm=m.bm;l.lk=m.lk;l.name=m.name;
+    l.ob=histObCopy(m.ob);l.style=m.style?JSON.parse(JSON.stringify(m.style)):null;
+    l.x.putImageData(m.px,0,0);
+    if(window.__cdInvalidateLayerStyleCache)window.__cdInvalidateLayerStyleCache(l);
+  }
+  cur=s.cur&&layers.includes(s.cur)?s.cur:layers[layers.length-1];
+}
+function swap(from,to){
+  histCommit();
+  const entry=from.pop();
+  if(!entry){histRefresh();return}
+  to.push(histSnap());histTrim(to);
+  histApply(entry);
+  histBase=entry;
+  render();drawOv();dirty=true;
+  if(sheetName==='layers'&&sheet.style.display==='block')layersUI();
+  histRefresh();
+}
+(() => {
+  'use strict';
+  // A step is recorded when the next action starts, and also right after a gesture ends,
+  // so the Undo/Redo buttons are up to date straight away.
+  const later=()=>setTimeout(histCommit,0);
+  document.addEventListener('pointerdown',()=>histCommit(),true);
+  document.addEventListener('pointerup',later,true);
+  document.addEventListener('pointercancel',later,true);
+  document.addEventListener('click',later,true);
+  document.addEventListener('change',later,true);
+  document.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey)histCommit()},true);
+  histRefresh();
+})();
+
 const sz=()=>+$('#sz').value;
-function cropTo(x,y,w,h){x=Math.round(x);y=Math.round(y);w=Math.round(Math.min(w,W-x));h=Math.round(Math.min(h,H-y));for(const l of layers){const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(l.c,-x,-y);l.c=c;l.x=c.getContext('2d',{willReadFrequently:true});if(l.ob){l.ob.x-=x;l.ob.y-=y}}
+function cropTo(x,y,w,h){for(const l of layers){l._cdPixelVersion=(l._cdPixelVersion||0)+1;l._cdStyleCache=null}x=Math.round(x);y=Math.round(y);w=Math.round(Math.min(w,W-x));h=Math.round(Math.min(h,H-y));for(const l of layers){const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(l.c,-x,-y);l.c=c;l.x=c.getContext('2d',{willReadFrequently:true});if(l.ob){l.ob.x-=x;l.ob.y-=y}}
  W=w;H=h;cv.width=ov.width=w;cv.height=ov.height=h;selP=null;undo=[];redo=[];if(P){P.w=w;P.h=h}fit();render();dirty=true;toast('Cropped (cannot be undone)')}
 /* ---------- colors ---------- */
 const rgb=h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16));
@@ -282,7 +368,7 @@ function flip(h){push();const t=document.createElement('canvas');t.width=W;t.hei
 /* ---------- sheets ---------- */
 function open(h){if(apType)cancelAdj();sheet.innerHTML=h;sheet.style.display='block'}
 let sheetName=null,mergeSrc=null,gest=null,userSel=false;
-function doMerge(src,dst){if(src===dst)return toast('Pick a different layer');dst.ob=null;const si=layers.indexOf(src),di=layers.indexOf(dst);undo.push({l:dst,d:dst.x.getImageData(0,0,W,H)});redo=[];dst.x.save();dst.x.globalAlpha=src.vis?src.op:0;if(si<di)dst.x.globalCompositeOperation='destination-over';else dst.x.globalCompositeOperation=src.bm||'source-over';dst.x.drawImage(src.c,0,0);dst.x.restore();layers.splice(si,1);cur=dst;render();dirty=true;toast('Merged into “'+dst.name+'”')}
+function doMerge(src,dst){if(src===dst)return toast('Pick a different layer');dst.ob=null;const si=layers.indexOf(src),di=layers.indexOf(dst);dst.x.save();dst.x.globalAlpha=src.vis?src.op:0;if(si<di)dst.x.globalCompositeOperation='destination-over';else dst.x.globalCompositeOperation=src.bm||'source-over';dst.x.drawImage(src.c,0,0);dst.x.restore();layers.splice(si,1);cur=dst;render();dirty=true;toast('Merged into “'+dst.name+'”')}
 function close(){if(apType)cancelAdj();sheet.style.display='none';sheetName=null}
 function tg(n,f){if(sheet.style.display=='block'&&sheetName==n){close();return}f();sheetName=n}
 function layersUI(){const BM=[['source-over','Normal'],['multiply','Multiply'],['screen','Screen'],['overlay','Overlay'],['darken','Darken'],['lighten','Lighten'],['color-dodge','Color Dodge'],['color-burn','Color Burn'],['soft-light','Soft Light'],['hard-light','Hard Light'],['difference','Difference']],ty=(l,i)=>l.ob?(l.ob.k=='text'?'T':'▣'):i==0&&l.name=='Background'?'■':l.name=='Shape'?'◆':'✎';
@@ -335,7 +421,7 @@ document.addEventListener('change',async e=>{const k=e.target.dataset&&e.target.
 const b16=n=>[n>>8&255,n&255],b32=n=>[n>>>24&255,n>>16&255,n>>8&255,n&255],asc=t=>[...t].map(c=>c.charCodeAt(0)),U=a=>new Uint8Array(a);
 function planes(d,n){const p=[];for(let c=0;c<n;c++){const a=new Uint8Array(W*H);for(let i=0,j=c;i<a.length;i++,j+=4)a[i]=d[j];p.push(a)}return p}
 function buildPSD(){const Q=[],recs=[],chs=[];Q.push(U([...asc('8BPS'),0,1,0,0,0,0,0,0,...b16(3),...b32(H),...b32(W),...b16(8),...b16(3),...b32(0),...b32(0)]));let len=2;
- for(const l of layers){const pl=planes(l.x.getImageData(0,0,W,H).data,4);let nm=l.name.replace(/[^\x20-\x7e]/g,'')||'Layer '+l.id;nm=nm.slice(0,200);const nb=[nm.length,...asc(nm)];while(nb.length%4)nb.push(0);
+ for(const l of layers){const exportCanvas=window.__cdStyledCanvas?window.__cdStyledCanvas(l):l.c;const pl=planes(exportCanvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,W,H).data,4);let nm=l.name.replace(/[^\x20-\x7e]/g,'')||'Layer '+l.id;nm=nm.slice(0,200);const nb=[nm.length,...asc(nm)];while(nb.length%4)nb.push(0);
   const ex=[...b32(0),...b32(0),...nb];if(/[^\x20-\x7e]/.test(l.name)){const s=l.name.slice(0,100),lb=[...b32(s.length)];for(let i=0;i<s.length;i++)lb.push(...b16(s.charCodeAt(i)));while(lb.length%4)lb.push(0);ex.push(...asc('8BIMluni'),...b32(lb.length),...lb)}
   const r=[...b32(0),...b32(0),...b32(H),...b32(W),...b16(4)];[0,1,2,0xFFFF].forEach(i=>r.push(...b16(i),...b32(2+W*H)));r.push(...asc('8BIM'+(PM[l.bm]||'norm')),Math.round(l.op*255),0,l.vis?0:2,0,...b32(ex.length),...ex);
   recs.push(U(r));len+=r.length;pl.forEach(p=>{chs.push(U([0,0]),p);len+=2+p.length})}
@@ -370,7 +456,7 @@ const A={tool:b=>{setTool(b.dataset.t);if(b.closest('#sheet'))close()},home:()=>
  lsel:b=>{const l=layers[+b.dataset.i];if(mergeSrc){const s0=mergeSrc;mergeSrc=null;doMerge(s0,l);layersUI();return}cur=l;userSel=true;layersUI();drawOv()},lvis:b=>{const l=layers[+b.dataset.i];l.vis=!l.vis;render();layersUI()},lup:b=>mvL(+b.dataset.i,1),ldn:b=>mvL(+b.dataset.i,-1),
  ladd:()=>{const l=mk('Layer '+nid);layers.splice(layers.indexOf(cur)+1,0,l);cur=l;userSel=true;dirty=true;layersUI()},ldup:()=>{const l=mk(cur.name+' copy');l.x.drawImage(cur.c,0,0);l.op=cur.op;l.bm=cur.bm;l.lk=cur.lk;if(cur.ob)l.ob={...cur.ob};layers.splice(layers.indexOf(cur)+1,0,l);cur=l;userSel=true;render();dirty=true;layersUI()},
  ldel:()=>{if(layers.length<2)return toast('Cannot delete the only layer');const k=layers.indexOf(cur);layers.splice(k,1);cur=layers[Math.max(0,k-1)];render();dirty=true;layersUI();drawOv()},
- f:b=>{const k=b.dataset.f;if(AD[k])adjUI(k);else if(k=='fh'||k=='fv'){flip(k=='fh');close()}else{oneTap(k);close()}},aok:()=>{cur.ob=null;undo.push({l:cur,d:apBase});redo=[];dirty=true;apType=null;close()},acan:close,
+ f:b=>{const k=b.dataset.f;if(AD[k])adjUI(k);else if(k=='fh'||k=='fv'){flip(k=='fh');close()}else{oneTap(k);close()}},aok:()=>{cur.ob=null;dirty=true;apType=null;close()},acan:close,
  mgd:()=>{const i=layers.indexOf(cur);if(i<1)return toast('There is no layer below');doMerge(cur,layers[i-1]);layersUI()},mgw:()=>{mergeSrc=cur;layersUI()},mgx:()=>{mergeSrc=null;layersUI()},flat:()=>{const c=cvs(cx.getImageData(0,0,W,H)),b=layers[0];b.ob=null;b.x.clearRect(0,0,W,H);b.x.drawImage(c,0,0);b.op=1;b.vis=true;layers=[b];cur=b;undo=[];redo=[];dirty=true;render();layersUI();toast('Flattened to one layer')},
  pasteimg:async()=>{try{for(const it of await navigator.clipboard.read()){const t=it.types.find(x=>x.startsWith('image/'));if(t){close();addImgs([await it.getType(t)],false);return}}toast('No image in the clipboard')}catch(e){toast('Clipboard access was blocked')}},
  enter:enterDel,pp:()=>penAct('pp'),pm:()=>penAct('pm'),pt:()=>penAct('pt'),pd:()=>penAct('pd'),pc:()=>penAct('pc')};
@@ -388,7 +474,7 @@ document.addEventListener('click',e=>{const t=e.target;if(!(t&&t.matches&&t.matc
 document.addEventListener('paste',e=>{const f=[...(e.clipboardData&&e.clipboardData.files||[])].filter(x=>x.type.startsWith('image/'));if(f.length&&P)addImgs(f,false)});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&P&&dirty)saveProj()});setInterval(()=>{if(P&&dirty&&!act)saveProj()},30000);
 window.addEventListener('resize',()=>{if(P)fit()});
-(async()=>{try{dl=await window.claude?.use('downloads')}catch(e){}
+(async()=>{dl=null;
  try{for(const f of await tx('f','readonly',s=>s.getAll())){try{const ff=new FontFace(f.name,f.buf.slice(0));await ff.load();document.fonts.add(ff);if(!FG['My fonts'].includes(f.name))FG['My fonts'].push(f.name)}catch(e){}}}catch(e){}fillFonts()})();
 /* ---------- color picker engine ---------- */
 const h2r=(h,s,v)=>{const f=n=>{const k=(n+h/60)%6;return v-v*s*Math.max(0,Math.min(k,4-k,1))};return[f(5),f(3),f(1)].map(x=>Math.round(x*255))},
@@ -788,6 +874,34 @@ window.CDX_SET3_TIPS={"tips": [{"w": 360, "h": 57, "data": "iVBORw0KGgoAAAANSUhE
     ctx.stroke();
   }
 
+  // Smooth image drawing. A downscaled image is drawn from a half-size chain built once per image,
+  // so shrinking an object does not alias or look pixelated.
+  const cdxMipCache = new WeakMap();
+  function cdxMipChain(im) {
+    let chain = cdxMipCache.get(im);
+    if (chain) return chain;
+    chain = [im];
+    let s = im;
+    while (s.width > 1 || s.height > 1) {
+      const w = Math.max(1, Math.floor(s.width / 2)), h = Math.max(1, Math.floor(s.height / 2));
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const g = c.getContext('2d');
+      g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+      g.drawImage(s, 0, 0, w, h);
+      chain.push(c); s = c;
+    }
+    cdxMipCache.set(im, chain);
+    return chain;
+  }
+  function cdxDrawSmooth(ctx, im, x, y, w, h) {
+    const dw = Math.max(1, Math.abs(w)), dh = Math.max(1, Math.abs(h));
+    let pick = im;
+    for (const m of cdxMipChain(im)) { if (m.width >= dw && m.height >= dh) pick = m; else break; }
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(pick, x, y, w, h);
+  }
+
   const cdxOriginalRenderOb = renderOb;
   renderOb = function (layer) {
     const o = layer && layer.ob;
@@ -799,7 +913,7 @@ window.CDX_SET3_TIPS={"tips": [{"w": 360, "h": 57, "data": "iVBORw0KGgoAAAANSUhE
     ctx.rotate((Number(o.rot) || 0) * Math.PI / 180);
     ctx.translate(-centerX, -centerY);
     if (o.k === 'img') {
-      if (o.im) ctx.drawImage(o.im, o.x, o.y, o.w, o.h);
+      if (o.im) cdxDrawSmooth(ctx, o.im, o.x, o.y, o.w, o.h);
     } else if (o.k === 'text') {
       const lines = String(o.t || '').split('\n');
       const fs = fontStr(o);
@@ -841,18 +955,12 @@ window.CDX_SET3_TIPS={"tips": [{"w": 360, "h": 57, "data": "iVBORw0KGgoAAAANSUhE
     return { _cdxObject: true, l: layer, ob: cdxCloneOb(layer.ob), d: layer.x.getImageData(0, 0, W, H) };
   }
   function cdxPushObj(layer) {
-    undo.push(cdxObjSnapshot(layer));
-    if (undo.length > 12) undo.shift();
-    redo = [];
     dirty = true;
   }
   function cdxLayerSnapshot(layers0, current0) {
     return { layers: layers0.slice(), current: current0 };
   }
   function cdxPushLayerChange(before, beforeCur, after, afterCur) {
-    undo.push({ _cdxLayers: true, restore: cdxLayerSnapshot(before, beforeCur), opposite: cdxLayerSnapshot(after, afterCur) });
-    if (undo.length > 12) undo.shift();
-    redo = [];
     dirty = true;
   }
   const cdxOriginalSwap = swap;
@@ -926,7 +1034,9 @@ window.CDX_SET3_TIPS={"tips": [{"w": 360, "h": 57, "data": "iVBORw0KGgoAAAANSUhE
       o.rot = (s.rot || 0) + (a1 - od.a0) * 180 / Math.PI;
     } else {
       const local = cdxRotatePoint(s, cc, true);
-      const k = Math.max(.05, Math.hypot(local[0] - s.x, local[1] - s.y) / (Math.hypot(s.w, s.h) || 1));
+      const start = cdxRotatePoint(s, od.p, true);
+      const base = Math.hypot(start[0] - s.x, start[1] - s.y) || Math.hypot(s.w, s.h) || 1;
+      const k = Math.max(.02, Math.hypot(local[0] - s.x, local[1] - s.y) / base);
       if (o.k === 'text') o.s = Math.max(6, Math.min(900, s.s * k));
       else { o.w = Math.max(1, s.w * k); o.h = Math.max(1, s.h * k); }
     }
@@ -2108,6 +2218,7 @@ window.CDX_SET3_TIPS={"tips": [{"w": 360, "h": 57, "data": "iVBORw0KGgoAAAANSUhE
   'use strict';
 
   let sub = null;   // { parent: { layers, cur, undo, redo, index }, name }
+  window.__cdSubActive=()=>!!sub;
 
   // ---- Save button and Ctrl+S ----
   const top = document.getElementById('top');
@@ -2828,4 +2939,344 @@ window.CDX_SET3_TIPS={"tips": [{"w": 360, "h": 57, "data": "iVBORw0KGgoAAAANSUhE
     console.error('Logo tool failed to load', err);
   }
 })();
+
+
+/* Craft Design Layer Styles — original implementation by Enad.
+   Editable per-layer effects are stored with the project and rendered non-destructively. */
+(() => {
+  'use strict';
+  const STYLE_DEFAULTS = {
+    stroke:{on:false,color:'#ffffff',size:4,position:'outside',opacity:100},
+    shadow:{on:false,color:'#000000',opacity:55,x:8,y:8,blur:16,spread:0},
+    innerShadow:{on:false,color:'#000000',opacity:45,x:3,y:3,blur:8},
+    outerGlow:{on:false,color:'#4c8dff',opacity:65,size:18},
+    innerGlow:{on:false,color:'#ffffff',opacity:45,size:12},
+    color:{on:false,color:'#4c8dff',opacity:100},
+    gradient:{on:false,c1:'#4c8dff',c2:'#9b5cff',angle:45,opacity:100},
+    bevel:{on:false,depth:55,size:6,soften:2,angle:135,highlight:'#ffffff',shadow:'#000000',opacity:65}
+  };
+  const clone = o => JSON.parse(JSON.stringify(o));
+  function styleFor(layer){
+    if(!layer.style) layer.style=clone(STYLE_DEFAULTS);
+    for(const k of Object.keys(STYLE_DEFAULTS)) layer.style[k]={...STYLE_DEFAULTS[k],...(layer.style[k]||{})};
+    return layer.style;
+  }
+  function surface(layer,index){
+    layer._cdFxSurfaces ||= [];
+    let c=layer._cdFxSurfaces[index];
+    if(!c){c=document.createElement('canvas');layer._cdFxSurfaces[index]=c;}
+    if(c.width!==W||c.height!==H){c.width=W;c.height=H;}
+    const x=c.getContext('2d');x.setTransform(1,0,0,1,0,0);x.globalAlpha=1;x.globalCompositeOperation='source-over';x.filter='none';x.clearRect(0,0,W,H);
+    return [c,x];
+  }
+  function tintMask(mask,color,layer,index=2){
+    const [c,x]=surface(layer,index);x.drawImage(mask,0,0);x.globalCompositeOperation='source-in';x.fillStyle=color;x.fillRect(0,0,W,H);x.globalCompositeOperation='source-over';return c;
+  }
+  function shadowMask(source,color,blur,dx,dy,layer,index=1,spread=0){
+    const [c,x]=surface(layer,index);
+    let input=source;
+    const grow=Math.max(0,Math.min(40,Number(spread)||0));
+    if(grow>0) input=dilatedMask(source,grow,layer,4);
+    x.shadowColor=color;x.shadowBlur=Math.max(0,Math.min(100,Number(blur)||0));x.shadowOffsetX=Number(dx)||0;x.shadowOffsetY=Number(dy)||0;
+    x.drawImage(input,0,0);
+    x.shadowColor='transparent';x.shadowBlur=0;x.shadowOffsetX=0;x.shadowOffsetY=0;
+    x.globalCompositeOperation='destination-out';x.drawImage(input,0,0);x.globalCompositeOperation='source-over';
+    return c;
+  }
+  // Smooth morphology. Shifted copies are sampled on two rings (full radius and half radius),
+  // so outlines stay round. The old 12-direction ring left stepped, pixelated edges.
+  function ringSteps(r){return Math.max(12,Math.min(48,Math.ceil(r*2.5)))}
+  function dilatedMask(source,amount,layer,index=1){
+    const [c,x]=surface(layer,index),r=Math.max(0,Math.min(40,Number(amount)||0));
+    x.drawImage(source,0,0);
+    if(!r)return c;
+    const rings=r>=3?[r,r/2]:[r],steps=ringSteps(r);
+    x.filter='blur(0.35px)';
+    for(const rad of rings)for(let i=0;i<steps;i++){const a=i*Math.PI*2/steps;x.drawImage(source,Math.cos(a)*rad,Math.sin(a)*rad);}
+    x.filter='none';
+    return c;
+  }
+  function erodedMask(source,amount,layer,index=1){
+    const [c,x]=surface(layer,index),r=Math.max(0,Math.min(40,Number(amount)||0));
+    x.drawImage(source,0,0);
+    if(!r)return c;
+    const rings=r>=3?[r,r/2]:[r],steps=ringSteps(r);
+    x.globalCompositeOperation='destination-in';
+    for(const rad of rings)for(let i=0;i<steps;i++){const a=i*Math.PI*2/steps;x.drawImage(source,Math.cos(a)*rad,Math.sin(a)*rad);}
+    x.globalCompositeOperation='source-over';
+    return c;
+  }
+  // Soft copy of a mask. The mask is drawn off-canvas and only its blurred shadow is kept,
+  // which works in every browser (ctx.filter is not supported in Safari).
+  function blurredCopy(source,blur,layer,index){
+    const [c,x]=surface(layer,index),b=Math.max(0,Math.min(100,Number(blur)||0));
+    if(!b){x.drawImage(source,0,0);return [c,x]}
+    const OFF=W+H+32;
+    x.shadowColor='#000';x.shadowBlur=b;x.shadowOffsetX=OFF;x.shadowOffsetY=0;
+    x.drawImage(source,-OFF,0);
+    x.shadowColor='transparent';x.shadowBlur=0;x.shadowOffsetX=0;
+    return [c,x];
+  }
+  // Inside-edge mask: the part of the shape that the shape moved by (dx,dy) does NOT cover,
+  // softened by blur and kept only inside the shape. Used by Inner Shadow, Inner Glow and Bevel.
+  function innerEdge(base,dx,dy,blur,layer){
+    const [o,ox]=surface(layer,5);
+    ox.fillStyle='#000';ox.fillRect(0,0,W,H);
+    ox.globalCompositeOperation='destination-out';ox.drawImage(base,dx,dy);ox.globalCompositeOperation='source-over';
+    const [c,x]=blurredCopy(o,blur,layer,6);
+    x.globalCompositeOperation='destination-in';x.drawImage(base,0,0);x.globalCompositeOperation='source-over';
+    return c;
+  }
+  function styledCanvasUncached(layer){
+    const st=styleFor(layer),base=(sbOn&&layer===cur)?sComp():layer.c;
+    const [out,q]=surface(layer,3);
+    const draw=(c,a=1,op='source-over')=>{if(!c||a<=0)return;q.save();q.globalAlpha=Math.max(0,Math.min(1,a));q.globalCompositeOperation=op;q.drawImage(c,0,0);q.restore();};
+    // Outer effects are rendered first, underneath the original pixels.
+    if(st.shadow.on){const e=st.shadow,m=shadowMask(base,e.color,e.blur,e.x,e.y,layer,1,e.spread);draw(m,e.opacity/100);}
+    if(st.outerGlow.on){const e=st.outerGlow,m=shadowMask(base,e.color,e.size,0,0,layer,1);draw(m,e.opacity/100);}
+    if(st.stroke.on){const e=st.stroke,n=Math.max(0,Number(e.size)||0);
+      if(e.position==='outside'&&n>0){const d=dilatedMask(base,n,layer,1),[edge,ex]=surface(layer,2);ex.drawImage(d,0,0);ex.globalCompositeOperation='destination-out';ex.drawImage(base,0,0);ex.globalCompositeOperation='source-over';draw(tintMask(edge,e.color,layer,1),e.opacity/100);}
+    }
+    draw(base);
+    // Color and gradient overlays are clipped to the layer's own alpha.
+    if(st.color.on){const e=st.color;draw(tintMask(base,e.color,layer,1),e.opacity/100);}
+    if(st.gradient.on){const e=st.gradient,[gc,gx]=surface(layer,1),a=Number(e.angle)*Math.PI/180,dx=Math.cos(a)*Math.max(W,H)/2,dy=Math.sin(a)*Math.max(W,H)/2,g=gx.createLinearGradient(W/2-dx,H/2-dy,W/2+dx,H/2+dy);g.addColorStop(0,e.c1);g.addColorStop(1,e.c2);gx.fillStyle=g;gx.fillRect(0,0,W,H);gx.globalCompositeOperation='destination-in';gx.drawImage(base,0,0);gx.globalCompositeOperation='source-over';draw(gc,e.opacity/100);}
+    if(st.innerShadow.on){const e=st.innerShadow,m=innerEdge(base,Number(e.x),Number(e.y),Number(e.blur),layer);draw(tintMask(m,e.color,layer,7),e.opacity/100);}
+    if(st.innerGlow.on){const e=st.innerGlow,m=innerEdge(base,0,0,Number(e.size),layer);draw(tintMask(m,e.color,layer,7),e.opacity/100,'screen');}
+    if(st.stroke.on&&st.stroke.position==='inside'){
+      const e=st.stroke,n=Math.max(0,Number(e.size)||0);if(n>0){const er=erodedMask(base,n,layer,1),[edge,ex]=surface(layer,2);ex.drawImage(base,0,0);ex.globalCompositeOperation='destination-out';ex.drawImage(er,0,0);ex.globalCompositeOperation='source-over';draw(tintMask(edge,e.color,layer,1),e.opacity/100);}
+    }
+    if(st.bevel.on){const e=st.bevel,n=Math.max(1,Number(e.size)||1),a=Number(e.angle)*Math.PI/180,dx=Math.cos(a)*n,dy=Math.sin(a)*n,k=(e.opacity/100)*(Number(e.depth)/100);
+      draw(tintMask(innerEdge(base,-dx,-dy,Number(e.soften),layer),e.highlight,layer,7),k*.65,'screen');
+      draw(tintMask(innerEdge(base,dx,dy,Number(e.soften),layer),e.shadow,layer,7),k*.55,'multiply');
+    }
+    return out;
+  }
+  // Cache the expensive full-resolution effect result. Without this, every
+  // pointer event/slider tick allocated many full-size canvases for every layer.
+  function styledCanvas(layer){
+    const styleKey=JSON.stringify(styleFor(layer));
+    const pixelVersion=layer._cdPixelVersion||0;
+    const cache=layer._cdStyleCache;
+    if(cache&&cache.styleKey===styleKey&&cache.pixelVersion===pixelVersion&&cache.w===W&&cache.h===H)return cache.canvas;
+    const canvas=styledCanvasUncached(layer);
+    layer._cdStyleCache={styleKey,pixelVersion,w:W,h:H,canvas};
+    return canvas;
+  }
+  function invalidateLayerStyleCache(layer){if(!layer)return;layer._cdPixelVersion=(layer._cdPixelVersion||0)+1;layer._cdStyleCache=null;layer._cdFxSurfaces=null;}
+  function invalidateAllStyleCaches(){for(const layer of layers)invalidateLayerStyleCache(layer);}
+  // Pixel edits and document-size changes invalidate only the affected cache.
+  const styleOriginalPush=push;
+  push=function(){invalidateLayerStyleCache(cur);return styleOriginalPush.apply(this,arguments)};
+  const styleOriginalRenderOb=renderOb;
+  renderOb=function(layer){invalidateLayerStyleCache(layer);return styleOriginalRenderOb.apply(this,arguments)};
+  window.__cdInvalidateLayerStyleCache=invalidateLayerStyleCache;
+  window.__cdStyledCanvas=styledCanvas;
+  render=function(){
+    cx.clearRect(0,0,W,H);
+    for(const l of layers) if(l.vis){
+      const src=(l.style&&Object.values(l.style).some(e=>e&&e.on))?styledCanvas(l):(sbOn&&l===cur?sComp():l.c);
+      cx.save();cx.globalAlpha=l.op;cx.globalCompositeOperation=l.bm||'source-over';cx.drawImage(src,0,0);cx.restore();
+    }
+    cx.globalAlpha=1;cx.globalCompositeOperation='source-over';
+  };
+  /* ---- Layer Style panel. One job per control:
+     - Name on the left: shows that effect's settings (Photoshop behaviour).
+     - Checkbox: turns the effect on or off on the layer.
+     - Reset (top): turns every effect off and restores Normal / 100%.
+     - Reset (inside an effect): restores that effect's default values.
+     - Cancel: puts the layer back exactly as it was when the panel opened.
+     - Done: keeps the changes and adds ONE step to Undo. ---- */
+  const LABELS={stroke:'Stroke',shadow:'Drop Shadow',innerShadow:'Inner Shadow',outerGlow:'Outer Glow',innerGlow:'Inner Glow',color:'Color Overlay',gradient:'Gradient Overlay',bevel:'Bevel & Emboss'};
+  const EFFECTS=Object.keys(LABELS);
+  const BLEND=[['source-over','Normal'],['multiply','Multiply'],['screen','Screen'],['overlay','Overlay'],['darken','Darken'],['lighten','Lighten'],['color-dodge','Color Dodge'],['color-burn','Color Burn'],['soft-light','Soft Light'],['hard-light','Hard Light'],['difference','Difference']];
+  const FIELDS={
+    stroke:[['color','Color','color'],['size','Size',1,40],['position','Position',['outside','inside']],['opacity','Opacity',0,100]],
+    shadow:[['color','Color','color'],['opacity','Opacity',0,100],['x','Distance X',-100,100],['y','Distance Y',-100,100],['blur','Blur',0,100],['spread','Spread',0,40]],
+    innerShadow:[['color','Color','color'],['opacity','Opacity',0,100],['x','Distance X',-50,50],['y','Distance Y',-50,50],['blur','Size',0,60]],
+    outerGlow:[['color','Color','color'],['opacity','Opacity',0,100],['size','Size',0,100]],
+    innerGlow:[['color','Color','color'],['opacity','Opacity',0,100],['size','Size',0,80]],
+    color:[['color','Color','color'],['opacity','Opacity',0,100]],
+    gradient:[['c1','Start color','color'],['c2','End color','color'],['angle','Angle',0,360],['opacity','Opacity',0,100]],
+    bevel:[['highlight','Highlight','color'],['shadow','Shadow','color'],['depth','Depth',1,100],['size','Size',1,40],['soften','Soften',0,20],['angle','Angle',0,360],['opacity','Opacity',0,100]]
+  };
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const num=(v,f=0)=>{const n=Number(v);return Number.isFinite(n)?n:f};
+  const hexOk=h=>/^#[0-9a-f]{6}$/i.test(String(h))?String(h):'#000000';
+  const hexA=(h,a)=>{const n=parseInt(hexOk(h).slice(1),16);return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${clamp(num(a,1),0,1).toFixed(3)})`};
+
+  let session=null;   // the open Layer Style panel: {layer, before, prevCur, pick}
+  window.__cdStyleOpen=()=>!!session;
+  let frame=0;
+
+  function snapshot(layer){return{layer,style:layer.style?clone(layer.style):null,bm:layer.bm||'source-over',op:num(layer.op,1)}}
+  function restore(s){s.layer.style=s.style?clone(s.style):null;s.layer.bm=s.bm;s.layer.op=s.op;invalidateLayerStyleCache(s.layer)}
+  const looks=s=>JSON.stringify({st:s.style||STYLE_DEFAULTS,bm:s.bm,op:s.op});
+
+  // Field definitions: [id, label, 'color'] | [id, label, ['opt', ...]] | [id, label, min, max]
+  function fieldHTML(k,def,st){
+    const [id,label,kind,max]=def,key=`${k}.${id}`;
+    if(kind==='color'){const v=st[id]??'#000000';return `<label class="ls-field">${label}<input type="color" data-ls-f="${key}" value="${hexOk(v)}"></label>`}
+    if(Array.isArray(kind)){const v=st[id]??kind[0];return `<label class="ls-field">${label}<select data-ls-f="${key}">${kind.map(x=>`<option value="${x}"${v===x?' selected':''}>${x[0].toUpperCase()+x.slice(1)}</option>`).join('')}</select></label>`}
+    const min=kind,v=clamp(num(st[id],min),min,max);
+    return `<label class="ls-field">${label}<span class="ls-range"><input type="range" min="${min}" max="${max}" step="1" value="${v}" data-ls-f="${key}"><output>${v}</output></span></label>`;
+  }
+  function previewCSS(st){
+    const bg=st.gradient.on?`linear-gradient(${num(st.gradient.angle)}deg,${hexOk(st.gradient.c1)},${hexOk(st.gradient.c2)})`:(st.color.on?hexA(st.color.color,st.color.opacity/100):'#343943');
+    const sh=[];
+    if(st.outerGlow.on)sh.push(`0 0 ${num(st.outerGlow.size)/4}px ${hexA(st.outerGlow.color,st.outerGlow.opacity/100)}`);
+    if(st.shadow.on)sh.push(`${num(st.shadow.x)/4}px ${num(st.shadow.y)/4}px ${num(st.shadow.blur)/4}px ${hexA(st.shadow.color,st.shadow.opacity/100)}`);
+    if(st.stroke.on)sh.push(`0 0 0 ${Math.max(1,num(st.stroke.size)/4)}px ${hexA(st.stroke.color,st.stroke.opacity/100)}`);
+    if(st.innerGlow.on)sh.push(`inset 0 0 ${num(st.innerGlow.size)/4}px ${hexA(st.innerGlow.color,st.innerGlow.opacity/100)}`);
+    if(st.innerShadow.on)sh.push(`inset ${num(st.innerShadow.x)/4}px ${num(st.innerShadow.y)/4}px ${num(st.innerShadow.blur)/4}px ${hexA(st.innerShadow.color,st.innerShadow.opacity/100)}`);
+    return esc(`background:${bg};box-shadow:${sh.join(',')||'none'}`);
+  }
+  function panelHTML(s){
+    const L=s.layer,st=styleFor(L),op=Math.round(num(L.op,1)*100),bm=L.bm||'source-over',pick=s.pick;
+    const nav=`<div class="ls-navrow${pick==='blend'?' on':''}"><button type="button" class="ls-navitem" data-ls-pick="blend">Blending Options</button></div>`+
+      EFFECTS.map(k=>`<div class="ls-navrow${pick===k?' on':''}"><input type="checkbox" data-ls-on="${k}" aria-label="${LABELS[k]}"${st[k].on?' checked':''}><button type="button" class="ls-navitem" data-ls-pick="${k}">${LABELS[k]}</button></div>`).join('');
+    const body=pick==='blend'
+      ?`<div class="ls-section"><b>Blending Options</b><div class="grid2">
+          <label class="ls-field">Blend Mode<select data-ls-blend>${BLEND.map(([v,t])=>`<option value="${v}"${bm===v?' selected':''}>${t}</option>`).join('')}</select></label>
+          <label class="ls-field">Opacity<span class="ls-range"><input type="range" min="0" max="100" step="1" value="${op}" data-ls-op><output>${op}%</output></span></label>
+        </div></div>`
+      :`<div class="ls-section"><div class="ls-fxhead"><b>${LABELS[pick]}</b><button type="button" class="ls-mini" data-ls-reset-fx="${pick}">Default</button></div>
+          ${st[pick].on?'':'<div class="mu">Turn this on with its checkbox to apply it.</div>'}
+          <div class="grid2">${FIELDS[pick].map(f=>fieldHTML(pick,f,st[pick])).join('')}</div></div>`;
+    return `<div class="ls-head"><div><b>Layer Style</b><div class="mu">${esc(L.name)}</div></div><button type="button" data-ls-act="reset" title="Turn off all effects and restore Normal 100%">Reset</button></div>
+      <div class="ls-layout"><nav class="ls-nav">${nav}</nav>
+      <section class="ls-options">${body}<div class="ls-preview"><span>Preview</span><div class="ls-sample" style="${previewCSS(st)}">Aa</div></div></section></div>
+      <div class="ls-actions"><button type="button" data-ls-act="cancel">Cancel</button><button type="button" class="on" data-ls-act="done">Done</button></div>`;
+  }
+  function paint(){if(session)sheet.innerHTML=panelHTML(session)}
+  // Live preview: re-render the canvas once per frame at most.
+  function touch(){
+    if(!session||frame)return;
+    frame=requestAnimationFrame(()=>{
+      frame=0;if(!session)return;
+      render();dirty=true;
+      const p=sheet.querySelector('.ls-sample');if(p)p.setAttribute('style',previewCSS(styleFor(session.layer)));
+    });
+  }
+  function commit(){
+    const s=session;if(!s)return;session=null;
+    const after=snapshot(s.layer);
+    if(looks(after)!==looks(s.before))dirty=true;
+    return after;
+  }
+  function done(){if(!session)return;commit();close();render();toast('Layer style applied')}
+  function cancel(){
+    const s=session;if(!s)return;session=null;
+    restore(s.before);
+    if(layers.includes(s.prevCur))cur=s.prevCur;
+    close();render();
+  }
+  function resetAll(){
+    const s=session;if(!s)return;
+    s.layer.style=clone(STYLE_DEFAULTS);s.layer.bm='source-over';s.layer.op=1;
+    paint();touch();
+  }
+  function resetFx(k){
+    const s=session;if(!s)return;
+    const st=styleFor(s.layer);st[k]={...clone(STYLE_DEFAULTS[k]),on:st[k].on};
+    paint();touch();
+  }
+
+  function layerStyleUI(layer=cur){
+    if(!layer)return toast('Select a layer first');
+    if(session)commit();
+    const prevCur=cur;cur=layer;userSel=true;
+    styleFor(layer);
+    const s={layer,before:snapshot(layer),prevCur,pick:'blend'};
+    open(panelHTML(s));          // session is still null here, so the open() wrapper does not commit
+    session=s;sheetName='layer-style';sheet.classList.add('layer-style-sheet');
+  }
+
+  // Clicks in the panel (capture phase, so the app's own handlers don't also run)
+  sheet.addEventListener('click',e=>{
+    const fx=e.target.closest('[data-a="layerfx"]');
+    if(fx){e.preventDefault();e.stopPropagation();layerStyleUI(layers[+fx.dataset.i]);return}
+    if(!session)return;
+    const pick=e.target.closest('[data-ls-pick]');
+    if(pick){session.pick=pick.dataset.lsPick;paint();return}
+    const act=e.target.closest('[data-ls-act]');
+    if(act){const a=act.dataset.lsAct;if(a==='done')done();else if(a==='cancel')cancel();else if(a==='reset')resetAll();return}
+    const rf=e.target.closest('[data-ls-reset-fx]');
+    if(rf){resetFx(rf.dataset.lsResetFx)}
+  },true);
+  sheet.addEventListener('input',e=>{
+    const s=session;if(!s)return;const el=e.target;
+    if(el.matches('[data-ls-op]')){s.layer.op=num(el.value,100)/100;el.nextElementSibling.textContent=el.value+'%';touch();return}
+    if(el.matches('[data-ls-f]')&&el.tagName==='INPUT'){
+      const[k,f]=el.dataset.lsF.split('.'),st=styleFor(s.layer)[k];
+      st[f]=el.type==='range'?num(el.value,st[f]):el.value;
+      if(el.type==='range')el.nextElementSibling.textContent=el.value;
+      touch();
+    }
+  });
+  sheet.addEventListener('change',e=>{
+    const s=session;if(!s)return;const el=e.target;
+    if(el.matches('[data-ls-on]')){const k=el.dataset.lsOn;styleFor(s.layer)[k].on=el.checked;s.pick=k;paint();touch();return}
+    if(el.matches('[data-ls-blend]')){s.layer.bm=el.value;touch();return}
+    if(el.matches('select[data-ls-f]')){const[k,f]=el.dataset.lsF.split('.');styleFor(s.layer)[k][f]=el.value;touch()}
+  });
+
+  // Keep the panel's session consistent with the rest of the app
+  const prevOpen=open;
+  open=function(h){if(session)commit();return prevOpen.apply(this,arguments)};
+  const prevClose=close;
+  close=function(){if(session)commit();sheet.classList.remove('layer-style-sheet');return prevClose.apply(this,arguments)};
+
+  // Undo / Redo for style changes (one step per Done)
+  const prevSwap=swap;
+  swap=function(from,to){
+    const top=from[from.length-1];
+    if(!top||!top._cdStyle)return prevSwap.apply(this,arguments);
+    if(session)commit();
+    from.pop();
+    if(!layers.includes(top.layer))return;
+    to.push({_cdStyle:true,...snapshot(top.layer)});
+    restore(top);cur=top.layer;
+    render();dirty=true;drawOv();
+  };
+
+  // FX button on each layer row, plus double-click / double-tap on a row
+  const previousLayersUI=layersUI;
+  layersUI=function(){previousLayersUI();document.querySelectorAll('#sheet .row[data-i]').forEach(row=>{
+    if(row.querySelector('[data-a="layerfx"]'))return;
+    const b=document.createElement('button');b.type='button';b.dataset.a='layerfx';b.dataset.i=row.dataset.i;b.title='Layer Style';b.textContent='FX';b.style.cssText='font-weight:700;color:#9bbcff;padding:4px 6px';row.append(b);
+  });};
+  A.layerfx=b=>layerStyleUI(layers[+b.dataset.i]);
+  document.addEventListener('dblclick',e=>{const row=e.target.closest('#sheet .row[data-i]');if(row&&!e.target.closest('button')){e.preventDefault();layerStyleUI(layers[+row.dataset.i]);}});
+  let tap={time:0,index:-1};
+  document.addEventListener('click',e=>{const row=e.target.closest('#sheet .row[data-i]');if(!row||e.target.closest('button'))return;const now=Date.now(),i=+row.dataset.i;if(tap.index===i&&now-tap.time<430){tap={time:0,index:-1};layerStyleUI(layers[i]);}else tap={time:now,index:i};});
+
+  const css=document.createElement('style');css.textContent=`
+  #sheet.layer-style-sheet{max-height:80%;padding:12px;background:#17191f;border-top:2px solid #4c8dff}
+  .ls-head,.ls-actions,.ls-fxhead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}
+  .ls-head button,.ls-actions button{min-height:38px;touch-action:manipulation}
+  .ls-layout{display:grid;grid-template-columns:minmax(118px,36%) 1fr;gap:10px;min-height:200px}
+  .ls-nav{display:flex;flex-direction:column;gap:5px;border-right:1px solid var(--bd);padding-right:8px;overflow:auto;max-height:50vh}
+  .ls-navrow{display:flex;align-items:center;gap:6px;border:1px solid var(--bd);border-radius:8px;padding:3px 6px;background:var(--p2)}
+  .ls-navrow.on{border-color:var(--ac);background:#4c8dff22}
+  .ls-navrow input[type=checkbox]{width:16px;height:16px;margin:0;flex:none;accent-color:var(--ac);cursor:pointer}
+  .ls-navitem{flex:1;min-width:0;text-align:left;border:0;background:none;padding:7px 2px;font-size:11.5px;white-space:normal;line-height:1.2;cursor:pointer}
+  .ls-navrow.on .ls-navitem{color:#fff;font-weight:600}
+  .ls-options{min-width:0;max-height:50vh;overflow:auto;padding-right:2px}
+  .ls-section,.ls-preview{border:1px solid var(--bd);border-radius:9px;padding:9px;margin-bottom:8px}
+  .ls-field{display:flex;flex-direction:column;gap:5px;color:var(--mu);font-size:11px;min-width:0}
+  .ls-field input[type=color]{width:100%;height:30px;padding:1px;box-sizing:border-box}
+  .ls-field select{width:100%;min-width:0}
+  .ls-range{display:flex;align-items:center;gap:6px}.ls-range input{flex:1;min-width:0}.ls-range output{min-width:34px;text-align:right;color:var(--tx)}
+  .ls-preview{display:flex;align-items:center;gap:10px}
+  .ls-sample{width:58px;height:50px;display:grid;place-items:center;border-radius:8px;font-size:22px;font-weight:800;color:#fff;text-shadow:1px 2px 3px #000}
+  .ls-mini{padding:3px 8px;font-size:11px;min-height:28px}
+  .ls-actions{justify-content:flex-end;margin:10px 0 0}
+  @media(max-width:420px){.ls-layout{grid-template-columns:104px 1fr;gap:6px}.ls-navitem{font-size:10px}}
+  `;document.head.append(css);
+  // Keep styles when duplicating the selected layer.
+  const oldDup=A.ldup;A.ldup=()=>{const source=cur;oldDup();if(source&&cur&&source.style)cur.style=clone(source.style);render();layersUI()};
+  // Style metadata is saved with the project; PSD export uses the styled result.
+})();
+
 </script></body></html>
