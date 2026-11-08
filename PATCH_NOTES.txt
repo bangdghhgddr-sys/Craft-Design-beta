@@ -1,0 +1,7 @@
+Craft Design update
+
+Replace the repository's index.html with this version. Add the seven PNG files from craft_brushes/ to the same repository folder if you want them available as separate brush files as well; the seven tips are also embedded in index.html for the built-in brush set.
+
+Replace CREDITS.md and THIRD_PARTY_LICENSES.txt with the updated versions in this package. Keep the existing LICENSE file unchanged: it is your own project license and states that the source code is reserved to you.
+
+Changes: removed remote Google Fonts and bundled font data; the app now starts with the device system font and uses its existing font-file import/persistence feature; replaced the unverified 20-brush set with seven brush tips cropped from the hand-drawn sheet supplied in this conversation; kept PNG brush importing; changed the PSD notice to avoid Adobe/Photoshop branding claims.
