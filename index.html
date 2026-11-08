@@ -3281,4 +3281,103 @@ window.CDX_SET3_TIPS={"tips": [{"w": 360, "h": 57, "data": "iVBORw0KGgoAAAANSUhE
   // Style metadata is saved with the project; PSD export uses the styled result.
 })();
 
-</script></body></html>
+</script>
+<script>
+/* Arrow pad + arrow keys for the Move tool.
+   Shows a keyboard-like pad (↑ ← ↓ →) in the empty area under the canvas while Move is active.
+   Each press nudges the selected layer by 3 px (hold Shift for 20 px). Holding a button repeats. */
+(() => {
+  'use strict';
+  const STEP = 3, BIG = 20;
+  const pad = document.createElement('div');
+  pad.id = 'cdArrowPad';
+  pad.style.cssText = 'position:fixed;z-index:8000;display:none;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(2,44px);gap:6px;padding:6px;border-radius:14px;background:rgba(20,22,27,.85);border:1px solid #35373d;box-shadow:0 8px 20px #0008;touch-action:none;user-select:none';
+  const keys = [
+    ['', 'up', ''],
+    ['left', 'down', 'right'],
+  ];
+  const glyph = { up: '↑', down: '↓', left: '←', right: '→' };
+  const delta = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+  const cells = [];
+  keys.forEach(row => row.forEach(name => {
+    const c = document.createElement('div');
+    if (name) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = glyph[name];
+      b.setAttribute('aria-label', 'Move ' + name);
+      b.style.cssText = 'width:44px;height:44px;border-radius:10px;border:1px solid #444;background:linear-gradient(160deg,#2c2d31,#121315);color:#fff;font-size:20px;padding:0;line-height:1';
+      b.addEventListener('pointerdown', e => { e.preventDefault(); startRepeat(name, e.shiftKey); });
+      c.append(b);
+    }
+    cells.push(c);
+    pad.append(c);
+  }));
+  document.body.append(pad);
+
+  let timer = null, interval = null;
+  function nudge(name, big) {
+    const l = typeof cur !== 'undefined' ? cur : null;
+    if (!l) return;
+    if (l.lk) return;
+    if (!l.ob && window.cdxLift) { window.cdxLift(l); }
+    if (!l.ob) return;
+    const d = delta[name], s = big ? BIG : STEP;
+    l.ob.x += d[0] * s;
+    l.ob.y += d[1] * s;
+    renderOb(l);
+    render();
+    drawOv();
+    dirty = true;
+  }
+  function startRepeat(name, big) {
+    nudge(name, big);
+    stopRepeat();
+    timer = setTimeout(() => { interval = setInterval(() => nudge(name, big), 30); }, 200);
+  }
+  function stopRepeat() { clearTimeout(timer); clearInterval(interval); timer = interval = null; }
+  window.addEventListener('pointerup', stopRepeat);
+  window.addEventListener('pointercancel', stopRepeat);
+
+  // Place the pad inside the empty area at the bottom-left of the canvas viewport
+  function place() {
+    const vp = document.getElementById('vp');
+    if (!vp) return;
+    const r = vp.getBoundingClientRect();
+    const h = pad.offsetHeight || 108;
+    pad.style.left = (r.left + 10) + 'px';
+    pad.style.top = Math.max(r.top + 8, r.bottom - h - 12) + 'px';
+  }
+  function update() {
+    const on = typeof tool !== 'undefined' && tool === 'move';
+    pad.style.display = on ? 'grid' : 'none';
+    if (on) place();
+  }
+  const vpEl = document.getElementById('vp');
+  if (vpEl) vpEl.addEventListener('scroll', place, { passive: true });
+  window.addEventListener('resize', place);
+
+  // Keep the pad in sync with the tool
+  const originalSetTool = setTool;
+  setTool = function () {
+    const r = originalSetTool.apply(this, arguments);
+    update();
+    return r;
+  };
+  update();
+
+  // Physical arrow keys move the selection while the Move tool is active
+  window.addEventListener('keydown', e => {
+    if (tool !== 'move') return;
+    const t = e.target;
+    if (t && (t.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(t.tagName))) return;
+    const map = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+    const name = map[e.key];
+    if (!name) return;
+    e.preventDefault();
+    if (!e.repeat) nudge(name, e.shiftKey);
+    else nudge(name, e.shiftKey);
+  });
+})();
+</script>
+</body></html>
